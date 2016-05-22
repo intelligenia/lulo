@@ -1,0 +1,6 @@
+{
+    "require": {
+        "twig/twig": "1.24.0",
+        "adodb/adodb-php": "5.20.4"
+    }
+}
