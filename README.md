@@ -115,10 +115,10 @@ User::init();
 
 # TODO
 
-- Allow models to dynamically change of table.
+- ~~Allow models to dynamically change of table.~~ It can be done by reimplementing **getTableName** method.
 - End translation of code to English.
 - Translate documents to English.
-- Reimplement Collection to use RecordSet.
+- ~~Reimplement Collection to use RecordSet.~~
 
 # License
 MIT License.
