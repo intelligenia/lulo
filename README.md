@@ -120,6 +120,7 @@ User::init();
 - Translate documents to English.
 - ~~Reimplement Collection to use RecordSet.~~
 - Script for table creation from model.
+- Migrations.
 
 # License
 MIT License.
