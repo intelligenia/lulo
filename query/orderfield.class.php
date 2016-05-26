@@ -48,7 +48,7 @@ class OrderField{
 				// Add of the relationship to the query object
 				$this->luloquery->addRelatedModel($relationshipName, $relatedModel=null);
 				$this->model = $model;
-				$this->table = $model::TABLE_NAME;
+				$this->table = $model::getTableName();
 				$this->tableAlias = $relationshipName;
 				$this->field = $matches[2];
 				$this->orderValue = strtoupper($orderValue);
@@ -60,7 +60,7 @@ class OrderField{
 		// If field belongs to the model, we only have to include the order
 		elseif($model::metaHasAttribute($field)){
 			$this->model = $model;
-			$this->table = $model::TABLE_NAME;
+			$this->table = $model::getTableName();
 			$this->tableAlias = "main_table";
 			$this->field = $field;
 			$this->orderValue = strtoupper($orderValue);

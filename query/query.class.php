@@ -84,7 +84,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		if (is_null($model)) {
 			$model = $this->model;
 		}
-		return $model::TABLE_NAME;
+		return $model::getTableName();
 	}
 
 	/*	 * *************************************************************** */
@@ -108,17 +108,17 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		// Añadimos el modelo relacionado a la lista de modelos
 		$this->relatedModels[] = $relatedModel;
 		// Añadimos su tabla a la lista de tablas relacionadas
-		$this->relatedTables[] = $relatedModel::TABLE_NAME;
+		$this->relatedTables[] = $relatedModel::getTableName();
 		// Añadimos la relación $relationshipName de $relatedModel
 		// a la lista de relaciones relacionadas
 		$this->relationships[$relationshipName] = [
 			"model" => $relatedModel,
-			"table" => $relatedModel::TABLE_NAME,
+			"table" => $relatedModel::getTableName(),
 			"name" => $relationshipName,
 			"attributes" => $relationship
 		];
 
-		$this->relationships[$relationshipName]["attributes"]["table"] = $relatedModel::TABLE_NAME;
+		$this->relationships[$relationshipName]["attributes"]["table"] = $relatedModel::getTableName();
 	}
 
 	
@@ -170,7 +170,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		// Modelo a consultar
 		$this->model = $model;
 		// Tabla del modelo (tabla principal)
-		$this->model_table = $model::TABLE_NAME;
+		$this->model_table = $model::getTableName();
 		$this->filters = [];
 		
 		$this->relationships = [];

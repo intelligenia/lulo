@@ -84,13 +84,14 @@ trait LoadRelated {
 		// Las tablas son (en este orden): los nexos y la tabla destino
 		// La tabla destino se incluye sólo en los campos a seleccionar
 		// porque se presupone su presencia
-		$tables = array_merge([], $junctionTables, [$foreignClass::TABLE_NAME]);
+		$tables = array_merge([], $junctionTables, [$foreignClass::getTableName()]);
 		$numTables = count($tables);
 		
 		// Para las tablas intermedias, sólo para las tablas nexo se incluyen
 		// los campos y sólo si así lo indica la relación
 		$fieldsByTable = [];
-		foreach(array_merge([static::TABLE_NAME],$tables) as $tableName){
+		$TABLE_NAME = static::getTableName();
+		foreach(array_merge([$TABLE_NAME],$tables) as $tableName){
 			$fieldsByTable[$tableName] = [];
 		}
 		
@@ -108,7 +109,7 @@ trait LoadRelated {
 		}
 		
 		// Los campos son todos los campos que no sean blob de la tabla de destino (última tabla)
-		$fieldsByTable[$foreignClass::TABLE_NAME] = $foreignClass::metaGetSelectableAttributes();
+		$fieldsByTable[$foreignClass::getTableName()] = $foreignClass::metaGetSelectableAttributes();
 		
 		// Condiciones sobre la tabla original (0)
 		$localConditions = $this->getPk();
@@ -156,7 +157,7 @@ trait LoadRelated {
 		// Orden de los elementos remotos (no tiene sentido tener otro orden)
 		$params['order'] = array();
 		if(!is_null($order)){
-			$params['order'][$foreignClass::TABLE_NAME] = $order;
+			$params['order'][$foreignClass::getTableName()] = $order;
 		}
 		
 		// Límite de la consulta

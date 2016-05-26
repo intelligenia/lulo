@@ -19,7 +19,7 @@ trait Update {
 	 * */
 	public static function dbUpdateAll($condition, $values){
 		$db = static::DB;
-		$ok = $db::updateFields(static::TABLE_NAME, $values, $condition);
+		$ok = $db::updateFields(static::getTableName(), $values, $condition);
 		return $ok;
 	}
 	
@@ -36,7 +36,7 @@ trait Update {
 		// Updating the object
 		$this->setAttributes($values);
 		// Update object in table
-		$ok = $db::updateFields(static::TABLE_NAME, $values, $pkValue);
+		$ok = $db::updateFields(static::getTableName(), $values, $pkValue);
 		return $ok;
 	}
 	
@@ -87,7 +87,7 @@ trait Update {
 		
 		// Writting the blob
 		$newValues = [$blobName => $blobResource];
-		$ok = $db::updateFields(static::TABLE_NAME, $newValues, $condition);
+		$ok = $db::updateFields(static::getTableName(), $newValues, $condition);
 		return $ok;
 	}
 	

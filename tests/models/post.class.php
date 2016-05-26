@@ -167,7 +167,7 @@ class Post extends \lulo\models\LuloModel{
 	public static function cleanCreation($data){
 		$data = parent::cleanCreation($data);
 		$data["stack"] = TEST_STACK;
-		$data["title_slug"] = \DB::dbMakeUniqueLargeSlug($data["title"], 64, static::TABLE_NAME, "title");
+		$data["title_slug"] = \DB::dbMakeUniqueLargeSlug($data["title"], 64, static::getTableName(), "title");
 		$now = (new \DateTime())->format('Y-m-d H:i:s');
 		$data["creation_datetime"] = $now;
 		$data["last_update_datetime"] = $now;

@@ -58,7 +58,7 @@ class Condition{
 			$relationship = $model::metaGetRelationship($relationshipName);
 			$relatedModel = $relationship["model"];
 			$this->model = $relatedModel;
-			$this->table = $relatedModel::TABLE_NAME;
+			$this->table = $relatedModel::getTableName();
 			$this->table_alias = $relationshipName;
 			$this->field = $matches[2];
 			// Adding to relations that will be used in the query
@@ -68,7 +68,7 @@ class Condition{
 		// Local field
 		}else{
 			$this->model = $model;
-			$this->table = $model::TABLE_NAME;
+			$this->table = $model::getTableName();
 			$this->table_alias = "main_table";
 			$this->field = $field;
 			$this->operator = "=";

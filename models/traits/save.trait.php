@@ -31,7 +31,7 @@ trait Save {
 		}
 		
 		// Insertion of a new tuple
-		$ok = $db::insert(static::TABLE_NAME, $_model_data);
+		$ok = $db::insert(static::getTableName(), $_model_data);
 		
 		// Get a new id by session.
 		// View http://dev.mysql.com/doc/refman/5.5/en/information-functions.html#function_last-insert-id
@@ -59,7 +59,7 @@ trait Save {
 		}
 		
 		// Update of object fields
-		$ok = $db::updateFields(static::TABLE_NAME, $values, $pkValue);
+		$ok = $db::updateFields(static::getTableName(), $values, $pkValue);
 		return $ok;
 	}
 	
@@ -78,7 +78,7 @@ trait Save {
 		$db = static::DB;
 		// Using its primary key
 		$pkValue = $this->getPk();
-		$alreadyExists = ($db::count(static::TABLE_NAME, $pkValue) > 0);
+		$alreadyExists = ($db::count(static::getTableName(), $pkValue) > 0);
 		return !$alreadyExists;
 	}
 
