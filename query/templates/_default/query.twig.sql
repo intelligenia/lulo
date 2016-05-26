@@ -103,9 +103,7 @@ WHERE (
 
 {# Límite de los resultados obtenidos #}
 {% block limit %}
-	{% if query.limit %}
-	LIMIT {{query.limit[0]}}, {{query.limit[1]}}
-	{% endif %}
+    {% include "limit_select.twig.sql" %}
 {% endblock limit %}
 
 {# Para tener consultas SELECT FOR UPDATE #}
