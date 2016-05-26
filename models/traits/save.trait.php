@@ -9,81 +9,74 @@ namespace lulo\models\traits;
 trait Save {
 	
 	/**
-	 * Guarda el objeto en base de datos asumiendo que no existe otro
-	 * con la misma clave primaria que éste.
+	 * Saves object in database assuming there is no repeated primary key.
 	 * */
 	protected function _dbSaveNewObject($blobs=[]){
 		$db = static::DB;
 		
 		$id_attribute_name = static::ID_ATTRIBUTE_NAME;
 		
-		// Guarda en BD del propio objeto
+		// Get non-blob attributes and their values
 		$_model_data = $this->getNonBlobAttributes();
 		
-		// Eliminamos el campo id, según la especificación de LULO,
-		// el campo id es autoincrementado
-		// y algunos SGBD no les gusta que tenga valor nulo
+		// Delete of id attribute. We assume the DB engine assigns it with a
+		// legal value
 		if(array_key_exists($id_attribute_name, $_model_data)){
 			unset($_model_data[$id_attribute_name]);
 		}
 		
-		// Para cada blob, comprobamos si es una cadena o si es un objeto
-		// DBBlobReader
+		// For each blob we read it and prepara for the insertion
 		foreach($blobs as $blobName=>$blobObject){
 			static::_dbReadBlob($blobName, $blobObject, $_model_data);
 		}
 		
-		// Inserta una nueva tupla con los datos
+		// Insertion of a new tuple
 		$ok = $db::insert(static::TABLE_NAME, $_model_data);
 		
-		// Nota: esta sentencia obtiene el último id insertado en esta sesión.
-		// REPITO, ES ÚNICO POR SESIÓN, por lo que funciona correctamente.
-		// Ver http://dev.mysql.com/doc/refman/5.5/en/information-functions.html#function_last-insert-id
-		// para más información
+		// Get a new id by session.
+		// View http://dev.mysql.com/doc/refman/5.5/en/information-functions.html#function_last-insert-id
+		// for the case of MySQL. Other DB engines are supposed to work fine.
 		$this->$id_attribute_name = $db::getLastInsertId();
-		// Devuelve si todo ha funcionado correctamente
 		return $ok;
 	}
 	
 	
 	/**
-	 * Actualiza un objeto antiguo que ya estuviera en base de datos.
+	 * Update an existing object in the database.
 	 * */
 	protected function _dbSaveOldObject($blobs=[]){
 		$db = static::DB;
 		
-		// Clave primaria del objeto
+		// Primary key
 		$pkValue = $this->getPk();
 		
-		// Obtención de los atributos de objeto
+		// Get non-blob attributes and their values
 		$values = $this->getNonBlobAttributes();
 		
-		// Adición de los campos blob al listado de atributos del objeto
+		// For each blob we read it and prepara for the insertion
 		foreach($blobs as $blobName => $blobObject){
 			static::_dbReadBlob($blobName, $blobObject, $values);
 		}
 		
-		// Actualización de los campos del objeto
+		// Update of object fields
 		$ok = $db::updateFields(static::TABLE_NAME, $values, $pkValue);
 		return $ok;
 	}
 	
 	
 	/**
-	 * Comprueba si el objeto actual es un objeto nuevo creado en memoria y no
-	 * tiene un objeto asociado en la base de datos.
-	 * @return boolean Informa si el objeto es nuevo (true) o no (false).
+	 * Test if the object is a new object.
+	 * @return boolean true if the object is not in the database, false otherwise.
 	 * */
 	protected function _dbIsNewObject(){
-		// Si estamos ante un objeto que no tiene el id establecido
-		// o el id es nulo, no tiene clave primaria única
-		if( isset(static::$ATTRIBUTES["id"]) and (!isset($this->id) or is_null($this->id)) ){
+		$id_attribute_name = static::ID_ATTRIBUTE_NAME;
+		// If the object has not an id, is a new object
+		if( isset(static::$ATTRIBUTES[$id_attribute_name]) and (!isset($this->$id_attribute_name) or is_null($this->$id_attribute_name)) ){
 			return true;
 		}
-		// En otro caso, comprobamos que el objeto no existe en BD
+		// Test if object exists in BD
 		$db = static::DB;
-		// Comprobamos no existe objeto en BD
-		// con la misma clave primaria
+		// Using its primary key
 		$pkValue = $this->getPk();
 		$alreadyExists = ($db::count(static::TABLE_NAME, $pkValue) > 0);
 		return !$alreadyExists;
@@ -91,50 +84,41 @@ trait Save {
 
 	
 	/**
-	 * Limpia los atributos antes de guardar el objeto en BD.
+	 * Clean attributes before saving the object in database.
 	 * 
-	 * Es decir, comprueba que todos los atributos, que no sean blobs, obedecen sus restricciones.
 	 */
 	protected function cleanAttributes(){
 		foreach($this->getNonBlobAttributes() as $name=>$v){
 			$properties = static::$ATTRIBUTES[$name];
-			// Comprobación de nulidad de cada atributo
-			// Nótese que no compruebo los atributos automáticos, porque asumimos
-			// que están fuera del control del desarrollador
+			// Nullability test
 			if($properties["type"]!= "blob" and (!isset($properties["auto"]) or !$properties["auto"]) and is_null($this->$name) and (!isset($properties["null"]) or !$properties["null"])){
-				throw new \UnexpectedValueException("El atributo {$name} no puede ser null");
+				throw new \UnexpectedValueException("Attribute {$name} can't be null");
 			}
 		}
 	}
 	
 	
 	/**
-	 * Valida un objeto que ya existe en base de datos.
-	 * Es sobrescribible.
-	 * @param array $blobs Array con los objetos Blob.
+	 * Validation of an existing object.
+	 * Must be overwritten.
+	 * @param array $blobs Blob array.
 	 * */
 	public function cleanOld($blobs){
-		// Comprobamos que los atributos son correctos
 		$this->cleanAttributes();
 		
-		// Si se encuentra aquí con una condición que no se permite
-		// al lanzar una excepción con un mensaje se evita
-		// la edición del objeto.
+		// Throw exceptions here to stop saving
 	}
 	
 	
 	/**
-	 * Valida un objeto que NO existe en base de datos.
-	 * Es sobrescribible.
-	 * @param array $blobs Array con los objetos Blob.
+	 * Validate a new object (that doesn't exist in database).
+	 * Must be overwritten.
+	 * @param array $blobs Blob array.
 	 * */
 	public function cleanNew($blobs){
-		// Comprobamos que los atributos son correctos
 		$this->cleanAttributes();		
 
-		// Si se encuentra aquí con una condición que no se permite
-		// al lanzar una excepción con un mensaje se evita
-		// la edición del objeto.
+		// Throw exceptions here to stop saving
 	}
 	
 	
@@ -160,16 +144,18 @@ trait Save {
 	
 		
 	/**
-	 * Añade todas las relaciones a partir de los atributos dinámicos
-	 * del objeto $this.
-	 * @param boolean $objectExisted Informa si el objeto existía ya (es una edición) o es una creación.
-	 * En el caso de que sea una edición, se eliminarán todos sus objetos relacionados y se reemplazarán por los que se pasan como parámetro.
+	 * Add all the relationships from dynamic attributes of $this object.
+	 * @param boolean $objectExisted Did the object exist?
 	 * */
 	protected function _dbAddM2MFromForm($objectExisted=true){
 		foreach(static::$RELATIONSHIPS as $relationName=>$properties){
 			if($properties["type"] == "ManyToMany"){
+				// If it has dynamic attributes with the name of a relationship
+				// we have to update this relationship
 				if(isset($this->$relationName) and is_array($this->$relationName) and count($this->$relationName)>0){
 					$strPks = $this->$relationName;
+					// If object existed, delete all its relationships
+					// to prepare them to create all again
 					if($objectExisted){
 						$this->dbDeleteRelation($relationName);
 					}
@@ -180,33 +166,30 @@ trait Save {
 	}
 	
 	/**
-	 * Guarda este objeto en base de datos, validando antes si el objeto
-	 * cumple las condiciones para guardarlo en base de datos.
-	 * ATENCIÓN: o lo crea como una nueva tupla o edita el que ya
-	 * existiera con esa clave primaria de forma automática.
+	 * Save this object in its model table in the database.
+	 * 
+	 * Note that if the object existed, it is modified accordingly.
 	 * */
 	public function dbSave($blobs=[]){
-		// Comprobación de que el valor del objeto a guardar es válido
-		// con respecto a lo que existe en la base de datos
+		// Does the object exist?
 		$isNewObject = $this->_dbIsNewObject();
 		
-		// Validamos el objeto
+		// Is it valid?
 		$this->clean($blobs, $isNewObject);
 		
-		// Si existe, sólo tenemos que actualizarlo
+		// If it existed, update it
 		if(!$isNewObject){
 			$ok = $this->_dbSaveOldObject($blobs);
 		}
-		// Si no existe, creamos un objeto nuevo
+		// Otherwise, create it
 		else{
 			$ok = $this->_dbSaveNewObject($blobs);
 		}
 		
-		// Añadimos las relaciones muchos a muchos de nuevas
+		// Add relationships if they exists as dynamic attributes
 		$ok = ( $ok and $this->_dbAddM2MFromForm(!$isNewObject) );
 		
-		// Devuelve si la inserción o actualización de tupla y
-		// las inserciones de objetos relacionados han ido correctamente
+		// Everything went ok?
 		return $ok;
 	}
 	

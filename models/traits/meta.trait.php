@@ -2,7 +2,9 @@
 
 namespace lulo\models\traits;
 
-
+/**
+ * Metainformation methods of the model.
+ *  */
 trait Meta{
 	
 	/**

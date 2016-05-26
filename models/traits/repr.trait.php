@@ -2,28 +2,28 @@
 
 namespace lulo\models\traits;
 
+/**
+ * Representations of the object.
+ */
 trait Repr{
 	
-	/******************************************************************/
-	/******************* Representaciones del objeto ******************/
-	
 	/**
-	 * Representación como cadena.
-	 * @return string Representación del objeto como cadena.
+	 * Object as string.
+	 * @return string Object representation as a string.
 	 * */
 	public function str(){
-		// Obtenemos el nombre humano de la entidad
+		// Human name of the model
 		$humanName = ucfirst(static::$META["verbose_name"]);
-		// Sacamos su clave primaria
+		// Primary key of this object
 		$strPk = $this->getStrPk();
-		// Concatenamos todo eso y lo devolvemos
+		// Concate name of the model and primary key
 		return "{$humanName}({$strPk})";
 	}
 	
 	
 	/**
-	 * Representación como cadena de la clave primaria.
-	 * @return string Representación de la clave primaria del objeto como cadena.
+	 * Primary key of the object as a string.
+	 * @return string Representation of the primary key of the object as a string.
 	 * */
 	public function getStrPk(){
 		$strPk = implode("-", $this->getPk());
@@ -32,42 +32,39 @@ trait Repr{
 	
 	
 	/**
-	 * Conversión de una cadena de clave primaria a array.
-	 * @param string $strPk Conversión de la clave primara como string a array.
-	 * @return array Representación de la clave primaria de un objeto como array.
+	 * String representation of the primary key to primary key (as array).
+	 * @param string $strPk Primary key as string.
+	 * @return array Primary key as array.
 	 * */
 	protected static function strToPk($strPk){
-		//////////////////////////////////
-		// La clave primaria como cadena es cada uno de los valores de 
-		// los atributos de la clave primaria, en el mismo orden en el que
-		// se definan.
+		// Conversion to array
 		$pkValues = explode("-", $strPk);
-		// Nombres de la clave primaria
+		// Attributes that belong to primary key
 		$pkNames = static::metaGetPkAttributeNames();
-		// Comprobamos si la representación de la clave primaria como
-		// cadena es correcta o no
+		// Is the representation or the primary key right?
 		if(count($pkNames) != count($pkValues)){
-			throw new InvalidArgumentException("El formato de '{$strPk}' como clave primaria no es válido");
+			throw new \InvalidArgumentException("'{$strPk}' format as primary key is not valid");
 		}
-		//////////////////////////////////
-		/// Obtención de la clave primaria
-		$pk = []; // Contendrá la PK como array
+		/// Creation of primary key
+		$pk = []; // Will contain primary key
 		$countPkValues = count($pkValues);
+		// For each attribute that belongs to primary key, in that order
+		// assign its content from the string representation of the primary key
 		for($i=0; $i<$countPkValues; $i++){
-			// Nombre del atributo de la PK
-			$name = $pkNames[$i];
-			// Valor del atributo de la PK
+			$attribute_name = $pkNames[$i];
 			$value = $pkValues[$i];
-			// Pareja (<atributo> => <valor>) de la PK
-			$pk[$name] = $value;
+			$pk[$attribute_name] = $value;
 		}
 		return $pk;
 	}
 	
 	
 	/**
-	 * Representación del objeto como cadena.
-	 * @return string Representación del objeto como cadena.
+	 * Object as string.
+	 * 
+	 * Alias of str to provide automatic conversion of objects to string.
+	 * 
+	 * @return string Object representation as a string.
 	 * */
 	public function __toString(){
 		return $this->str();
