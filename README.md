@@ -119,6 +119,7 @@ User::init();
 - End translation of code to English.
 - Translate documents to English.
 - ~~Reimplement Collection to use RecordSet.~~
+- Script for table creation from model.
 
 # License
 MIT License.
