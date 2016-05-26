@@ -7,7 +7,8 @@ namespace lulo\models\traits;
  *  */
 trait Init {
 	
-	/* Direct relationships*/
+	/**************************************************************************/
+	/* DIRECT RELATIONSHIPS */
 	
 	/**
 	 * Adds a direct relationship given its name and its properties.
@@ -49,27 +50,23 @@ trait Init {
 			"related_verbose_name" => true, "nullable" => true,
 			"readonly" => true, "on_master_deletion" => true
 		];
-		// Para cada propiedad del atributo que sea de la relación,
-		// la asignamos al array con la información de la relación.
+		// Assigning to static::$RELATIONSHIPS as if it were another standard relationship
 		foreach($attributeProperties as $attributeProperty=>$attributePropertyValue){
-			// Comprobamos si existe la propiedad, y si es el caso, la asigna a la relación
 			if(isset($optionalProperties[$attributeProperty])){
-                            static::$RELATIONSHIPS[$relationshipName][$attributeProperty] = $attributePropertyValue;
+                static::$RELATIONSHIPS[$relationshipName][$attributeProperty] = $attributePropertyValue;
 			}
 		}
 	}
 	
 	
 	/**
-	 * Inicializa las relaciones directas que están en atributos del modelo.
+	 * Initialize direct relationships contained in the attributes of the model.
 	 * */
 	protected static function initDirectRelationshipsFromAttributes(){
-		// Para cada atributo del modelo, comprobamos si tiene como
-		// subtipo ForeignKey (la única relación que se permite ahora
-		// mismo)
+		// For each attribute, test if it has subtype and if it is "ForeignKey"
+		// In the future other relationship types will be added
 		foreach(static::$ATTRIBUTES as $attributeName=>$attributeProperties){
-			// Para cada atributo que sea una ForeignKey, le añadimos la
-			// relación al modelo.
+			// Addition of direct relationships based on attribute metada
 			if(isset($attributeProperties["subtype"]) and $attributeProperties["subtype"]=="ForeignKey"){
 				static::addForeignRelationshipFromAttribute($attributeName, $attributeProperties);
 			}
@@ -78,50 +75,52 @@ trait Init {
 	
 	
 	/**
-	 * Inicializa las relaciones directas implícitas en el modelo.
-	 * Por ahora, sólo inicializa las relaciones directas que provienen
-	 * de atributos del modelo.
+	 * Initialize direct relationships of this model.
+	 * 
+	 * Currently, only direct relationships described in model attributes
+	 * are initialized.
+	 * 
 	 * */
 	protected static function initDirectRelationships(){
-		// Introduce nuevos atributos en las relaciones, por ahora, sólo
-		// la tabla
+		// Introduce automatic attributes for each relationship.
+		// For the moment, only the table name of the remote model is needed.
 		foreach(static::$RELATIONSHIPS as $relationshipName=>&$relationshipProperties){
 			if(!isset($relationshipProperties["table"])){
 				$model = $relationshipProperties["model"];
-				$relationshipProperties["table"] = $model::TABLE_NAME;
+				$relationshipProperties["table"] = $model::getTableName();
 			}
 		}
-		// Inicializa las relaciones directas a partir de atributos
+		// Initialize direct relationships contained in the attributes
+		// of the model
 		static::initDirectRelationshipsFromAttributes();
 	}
 	
 	
-	/* FIN DE RELACIONES DIRECTAS */
+	/* END OF DIRECT RELATIONSHIPS */
 	/******************************************************************/
 	
 	
 	/******************************************************************/
-	/* RELACIONES INVERSAS */
+	/* INVERSE RELATIONSHIPS */
 	
 	/**
-	 * Obtiene el nombre único de la relación invertida.
-	 * Si no puede obtener un nombre único, da un error.
-	 * @param string $model Nombre del modelo que tiene la relación original.
-	 * @param string $relationName Nombre de la relación original.
-	 * @param array $relationship Array con las propiedades de la relación original.
-	 * @return string Nombre de la relación inversa (normalmente el "related_name" de la relación original).
+	 * Get inverse relationship name.
+	 * @param string $relationName Direct relation name.
+	 * @param array $relationship Array with properties of the direct relationship.
+	 * @return string Inverse relationship name (it should be the "related_name" attribute of the direct relationship).
 	 * */
-	protected static function getInverseRelationshipName($model, $relationName, $relationship){
-		$localModel = static::CLASS_NAME;
-		// Si existe el nombre de la relación inversa
+	protected static function getInverseRelationshipName($relationName, $relationship){
+		// If there is a name for the inverse relationship, return it
 		if(isset($relationship["related_name"])){
 			$inverseRelationName = $relationship["related_name"];
-		// Si no, tratamos de extraerlo de forma automática
+		
+		// Otherwise, create an automatic name
 		}else{
 			$inverseRelationName = "{$relationName}_inverse";
 		}
+		// If that name of the inverse relationship exists, return false
+		// otherwise return this name
 		if(isset(static::$RELATIONSHIPS[$inverseRelationName])){
-			//throw new InvalidArgumentException("En {$localModel}, al intentar crear la relación {$inverseRelationName} (inversa de {$relationName}) con {$model} se ha detectado otra relación con el mismo nombre ya existente");
 			return false;
 		}
 		return $inverseRelationName;
@@ -129,14 +128,13 @@ trait Init {
 	
 	
 	/**
-	 * Obtiene el nombre legible de la relación invertida.
-	 * @param string $model Nombre del modelo que tiene la relación original.
-	 * @param string $relationName Nombre de la relación original.
-	 * @param array $relationship Array con las propiedades de la relación original.
-	 * @return string Nombre legible de la relación invertida (normalmente el "related_verbose_name" de la relación original).
+	 * Get inverse relationship verbose name.
+	 * @param string $relationName Direct relation name.
+	 * @param array $relationship Array with properties of the direct relationship.
+	 * @return string Inverse relationship name (it should be the "related_name" attribute of the direct relationship).
 	 * */
 	protected static function getInverseRelationshipVerboseName($model, $relationName, $relationship){
-		$inverseVerboseName = "Inversa de la relación {$relationship['verbose_name']} de {$model}";
+		$inverseVerboseName = "Invers relationship {$relationship['verbose_name']} of {$model}";
 		if(isset($relationship["related_verbose_name"])){
 			$inverseVerboseName = $relationship["related_verbose_name"];
 		}
@@ -145,44 +143,39 @@ trait Init {
 	
 	
 	/**
-	 * Añade la relación ManyToMany inversa de la ManyToMany $relationName con el modelo $model.
-	 * @param string $model Nombre del modelo que tiene la relación original.
-	 * @param string $relationName Nombre de la relación original.
-	 * @param array $relationship Array con las propiedades de la relación original.
-	 * @return boolean True si se ha añadido una nueva relación, false en otro caso.
+	 * Adds an inverse ManyToMany relationship  $relationName with $model to current model.
+	 * @param string $model Name of the remote model.
+	 * @param string $relationName Direct relation name.
+	 * @param array $relationship Array with properties of the direct relationship.
+	 * @return string Inverse relationship name (it should be the "related_name" attribute of the direct relationship).
 	 * */
 	protected static function addInverseManyToManyRelationship($model, $relationName, $relationship){
-		// Tenemos que añadir una nueva relación ManyToMany
-		
-		// Nombre del modelo local
-		$localModel = static::CLASS_NAME;
-		
-		// Nombre de la relación
-		$inverseRelationName = static::getInverseRelationshipName($model, $relationName, $relationship);
+		// New relationship name
+		$inverseRelationName = static::getInverseRelationshipName($relationName, $relationship);
 		if(!is_string($inverseRelationName)){
 			return false;
 		}
 		
-		// Nombre legible por humanos de la relación
+		// New relationship verbose name
 		$inverseVerboseName = static::getInverseRelationshipVerboseName($model, $relationName, $relationship);
 		
-		// Nexos en orden ivertido
+		// Intervet nexus
 		$inverseJunctions = array_reverse($relationship["junctions"]);
 		
-		// Condición normal en orden inverso
+		// Inverse condition
 		$reverseConditions = array_reverse($relationship["conditions"]);
 		
-		// Condición de la relación inversa
+		// New relationship condition
 		$inverseConditions = [];
 		foreach($reverseConditions as $condition){
 			$inverseConditions[] = array_flip($condition);
 		}
 		
-		// Creamos la nueva relación en el modelo actual
+		// Inverse relationship in current model
 		static::$RELATIONSHIPS[$inverseRelationName] = [
 			"type" => "ManyToMany",
 			"model" => $model,
-			"table" => $model::TABLE_NAME,
+			"table" => $model::getTableName(),
 			"related_name" => $relationName,
 			"verbose_name" => $inverseVerboseName,
 			"junctions" => $inverseJunctions,
@@ -196,38 +189,37 @@ trait Init {
 	
 	
 	/**
-	 * Añade la relación OneToMany inversa de la ForeignKey $relationName con el modelo $model.
-	 * @param string $model Nombre del modelo que tiene la relación original.
-	 * @param string $relationName Nombre de la relación original.
-	 * @param array $relationship Array con las propiedades de la relación original.
-	 * @return boolean True si se ha añadido una nueva relación, false en otro caso.
+	 * Adds an inverse OneToMany relationship  $relationName with $model to current model.
+	 * @param string $model Name of the remote model.
+	 * @param string $relationName Direct relation name.
+	 * @param array $relationship Array with properties of the direct relationship.
+	 * @return string Inverse relationship name (it should be the "related_name" attribute of the direct relationship).
 	 * */
 	protected static function addInverseForeignKeyRelationship($model, $relationName, $relationship){
-		// Tenemos que añadir una nueva relación OneToMany
 		
-		// Nombre de la relación
-		$inverseRelationName = static::getInverseRelationshipName($model, $relationName, $relationship);
+		// New relationship name
+		$inverseRelationName = static::getInverseRelationshipName($relationName, $relationship);
 		if(!is_string($inverseRelationName)){
 			return false;
 		}
 		
-		// Nombre legible por humanos de la relación
+		// New relationship verbose name
 		$inverseVerboseName = static::getInverseRelationshipVerboseName($model, $relationName, $relationship);
 		
-		// Condición inversa
+		// Inverse condition
 		$inverseCondition = array_flip($relationship["condition"]);
 		
-		// ¿Qué hacer en el lado MANY en caso de eliminación?
+		// What to do in case of deletion of the "many" side of the relationship
 		$on_delete = false;
 		if(isset($relationship["on_master_deletion"])){
 			$on_delete = $relationship["on_master_deletion"];
 		}
 		
-		// Creamos la nueva relación en el modelo actual
+		// Inverse relationship in current model
 		static::$RELATIONSHIPS[$inverseRelationName] = [
 			"type" => "OneToMany",
 			"model" => $model,
-			"table" => $model::TABLE_NAME,
+			"table" => $model::getTableName(),
 			"verbose_name" => $inverseVerboseName,
 			"related_name" => $relationName,
 			"condition" => $inverseCondition,
@@ -238,40 +230,38 @@ trait Init {
 		];
 	}
 	
-	
 	/**
-	 * Añade la relación ForeignKey inversa de la OneToMany $relationName con el modelo $model.
-	 * @param string $model Nombre del modelo que tiene la relación original.
-	 * @param string $relationName Nombre de la relación original.
-	 * @param array $relationship Array con las propiedades de la relación original.
-	 * @return boolean True si se ha añadido una nueva relación, false en otro caso.
+	 * Adds an inverse ForeignKey relationship  $relationName with $model to current model.
+	 * @param string $model Name of the remote model.
+	 * @param string $relationName Direct relation name.
+	 * @param array $relationship Array with properties of the direct relationship.
+	 * @return string Inverse relationship name (it should be the "related_name" attribute of the direct relationship).
 	 * */
 	protected static function addInverseOneToManyRelationship($model, $relationName, $relationship){
-		// Tenemos que crear una nueva relación ForeignKey
 		
-		// Nombre de la relación
-		$inverseRelationName = static::getInverseRelationshipName($model, $relationName, $relationship);
+		// New relationship verbose name
+		$inverseRelationName = static::getInverseRelationshipName($relationName, $relationship);
 		if(!is_string($inverseRelationName)){
 			return false;
 		}
 		
-		// Nombre legible por humanos de la relación
+		// New relationship verbose name
 		$inverseVerboseName = static::getInverseRelationshipVerboseName($model, $relationName, $relationship);
 		
-		// Condición inversa
+		// Inverse condition
 		$inverseCondition = array_flip($relationship["condition"]);
 		
-		// ¿Qué hacer en el lado MANY en caso de eliminación?
+		// What to do in case of deletion of the "many" side of the relationship
 		$on_master_deletion = false;
 		if(isset($relationship["on_master_deletion"])){
 			$on_master_deletion = $relationship["on_master_deletion"];
 		}
 		
-		// Creamos la nueva relación en el modelo actual
+		// Inverse relationship in current model
 		static::$RELATIONSHIPS[$inverseRelationName] = [
 			"type" => "ForeignKey",
 			"model" => $model,
-			"table" => $model::TABLE_NAME,
+			"table" => $model::getTableName(),
 			"verbose_name" => $inverseVerboseName,
 			"condition" => $inverseCondition,
 			"nulllable" => ( isset($relationship["nullable"]) and $relationship["nullable"] ),
@@ -282,18 +272,19 @@ trait Init {
 	}
 	
 	/**
-	 * Añade una relación invertida $relationship (con $modelo).
-	 * @param string $model Nombre del modelo que tiene la relación original.
-	 * @param string $relationName Nombre de la relación original.
-	 * @param array $relationship Array con las propiedades de la relación original.
-	 * @return boolean True si se ha añadido una nueva relación, false en otro caso.
+	 * Adds an inverse relationship  $relationName with $model to current model.
+	 * @param string $model Name of the remote model.
+	 * @param string $relationName Direct relation name.
+	 * @param array $relationship Array with properties of the direct relationship.
+	 * @return string Inverse relationship name (it should be the "related_name" attribute of the direct relationship).
 	 * */
 	protected static function addInverseRelationship($model, $relationName, $relationship){
-		// Si la relación es una relación inversa
+		// If relationship is already an inverse relationship of any other
+		// relationship ignore it
 		if(isset($relationship["inverse_of"])){
 			return false;
 		}
-		// Relaciones originales
+		// For each type of relationship, create its particular inverse type one
 		if($relationship["type"] == "ManyToMany"){
 			static::addInverseManyToManyRelationship($model, $relationName, $relationship);
 		}elseif($relationship["type"] == "ForeignKey" or $relationship["type"] == "ManyToOne"){
@@ -301,74 +292,64 @@ trait Init {
 		}elseif($relationship["type"] == "OneToMany"){
 			static::addInverseOneToManyRelationship($model, $relationName, $relationship);
 		}else{
-			// Por si hemos introducido una relación de un tipo no reconocido 
-			throw new UnexpectedValueException("La relación {$relationName} tiene un tipo no reconocido");
+			// Non-recognized relationship type
+			throw new \UnexpectedValueException("Relationship {$relationName} has a non-recognizable type");
 		}
 		return true;
 	}
 	
 	
 	/**
-	 * Inicializa las relaciones inversas.
-	 * Una relación inversa es una relación que se inserta automáticamente
-	 * en un modelo debido a las relaciones que tienen con otros modelos.
+	 * Initialize inverse relationships.
+	 * 
+	 * An inverse relationship is a relationship automatically created that is
+	 * the inverse of an already defined relationship in other model.
 	 * */
 	protected static function initInvertedRelationships(){
-		// Si las relaciones inversas ya han sido activadas para este clase,
-		// no hagas nada
+		// Flag to control if inverse relationships have already been activated
 		if(isset(static::$INVERSE_RELATIONSHIPS_ACTIVATED[static::CLASS_NAME])){
 			return false;
 		}
-		// Se asume que todo modelo puede estar relacionado consigo mismo
+		// Every model can be related to itself
 		$relatedModels = array_merge(static::$RELATED_MODELS, [static::CLASS_NAME]);
-		// Para cada clase relacionada, vamos a ver todas sus relaciones
+		
+		// For each related model
 		foreach($relatedModels as $model){
-			// Para cada relación de un modelo relacionado
-			// (y de él consigo mismo), vamos a añadir una relación
-			// inversa de esta clase con ese modelo
+			// For each relationship, a new inverse relationship is created
 			$relationships = $model::$RELATIONSHIPS;
 			foreach($relationships as $name=>$properties){
-				// Comprobamos que existe el atributo "model"
-				// en la relación
+				// Test if 'model' attribute exists
 				if(!isset($properties["model"])){
-					throw new InvalidArgumentException("No se ha definido el modelo para la relación {$name}");
+					throw new \InvalidArgumentException("There is no 'model' attribute for relationship {$name}");
 				}
-				// Modelo remoto
+				// Remote model
 				$rModel = $properties["model"];
-				// Añadimos las relaciones inversas del modelo
-				// con el modelo actual
+				// Addition of inverse relationships
 				if($rModel == static::CLASS_NAME){
 					static::addInverseRelationship($model, $name, $properties);
 				}
 			}
 		}
-		// Marcamos que ya se han creado las relaciones inversas
+		// Flag this class to don't repeat inverse relationship creation
 		static::$INVERSE_RELATIONSHIPS_ACTIVATED[static::CLASS_NAME] = true;
 		return true;
 	}
 	
-	/***************** FIN DE LAS RELACIONES INVERSAS *****************/
+	/***************** END OF INVERSE RELATIONSHIPS *****************/
 	/******************************************************************/
 	
-	/******************************************************************/
-	/******************************************************************/
-	/************************** INICIALIZACIÓN ************************/
 	
 	/**
-	 * Inicializa los atributos del modelo.
-	 * Sólo es obligatorio llamarlo antes de trabajar con los modelos
-	 * en uno de los siguientes casos:
-	 * - Cuando queremos crear las relaciones inversas.
+	 * Initialize model attributes.
+	 * 
+	 * It is mandatory to call this method when we want to use inverse relationship.
+	 * 
 	 * */
 	public static function init(){
-		// Inicializa las relaciones directas (de tipo ForeignKey)
-		// que están descritas como un atributo
+		// Direct relationships initialization
 		static::initDirectRelationships();
-		// Inicializa las relaciones inversas
+		// Inverse relationships initialization
 		static::initInvertedRelationships();
 	}
-	
-	/********************** FIN INICIALIZACIÓN ************************/
-	/******************************************************************/
-	/******************************************************************/
+
 }
