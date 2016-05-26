@@ -4,6 +4,9 @@ namespace lulo\models\traits;
 
 use lulo\containers\Collection as Collection;
 
+/**
+ * Load trait for ROModel.
+ *  */
 trait Load {
 	
 	/**
@@ -241,60 +244,6 @@ trait Load {
 	public static function dbNotExists($condition=null){
 		return !(static::dbExists($condition));
 	}
-	
-	
-	/**
-	* Informa de los objetos que contienen en alguno de sus campos un valor igual al pasado como parámetro.
-	* @param string $search Cadena de búsqueda.
-	* @return array Array con los objetos que cumplen que uno de sus campos es igual a $search.
-	*/ 
-	public static function dbSearch($search){
-		$class_attributes = static::initAttributesMetaInformation();
-		$columnsStr = static::getSelectColumnExpressionSQL();
-		$condition = array();
-		$attribute_names = $class_attributes["attribute_names"];
-		foreach($attribute_names as $attribute){
-			$condition[$attribute] = array("like",$search);
-		}
-		$db = static::DB;
-		return static::arrayFactoryFromRows($db::getDisjunctiveAll(static::getTableName(), $columnsStr, $condition));
-	}
-	
-	
-	/**
-	* Informa de los objetos que contienen en alguno de sus campos de texto una cadena igual al que sea pasa como parámetro.
-	* @param string $search Cadena de búsqueda.
-	* @param string $condition Condición extra adicional que se ejecuta sobre la búsqueda. Por defecto es null.
-	* @param string $order Orden de los objetos que se devolverán, si es null se obvia. Por defecto es null.
-	* @param string $limit Número máximo de objetos a cargar, si es null se devuelven todos. Por defecto es null.
-	* @return array Array con los objetos que cumplen que uno de sus campos de texto es igual a $search.
-	*/ 
-	public static function dbTextSearch($search, $condition=null, $order=null, $limit=null){
-		$class_attributes = static::initAttributesMetaInformation();
-		$columnsStr = static::getSelectColumnExpressionSQL();
-		$likeCondition = array();
-		$attribute_names = $class_attributes["attribute_names"];
-		foreach($attribute_names as $attribute){
-			$condition[$attribute] = array("like","%$search%");
-		}
-		$dbHelper = static::DB;
-		if($condition!=null){
-			return static::arrayFactoryFromRows($dbHelper::getDisjunctiveAllWithExtraConditions(static::getTableName(), $columnsStr, $likeCondition, $condition, $order, $limit));
-		}
-		return static::arrayFactoryFromRows($dbHelper::getDisjunctiveAll(static::getTableName(), $columnsStr, $likeCondition, $order, $limit));
-	}
-	
-	
-	/**
-	* Informa de los objetos que contienen en alguno de los campos (pasados como claves de los elementos del array) un valor determinado (valor del elemento del array).
-	* @param array $search Campos y cadenas de búsqueda..
-	* @return array Array con los objetos que cumplen la condición dada por el array $search.
-	*/ 
-	public static function dbSearchIn($search){
-		$columnsStr = static::getSelectColumnExpressionSQL();
-		$dbHelper = static::DB;
-		return static::arrayFactoryFromRows($dbHelper::getDisjunctiveAll(static::getTableName(), $columnsStr, $search));
-	}
-	
+
 }
 

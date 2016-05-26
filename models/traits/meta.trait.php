@@ -8,8 +8,8 @@ namespace lulo\models\traits;
 trait Meta{
 	
 	/**
-	* Devuelve los nombres de los atributos que forman la clave primaria del objeto junto con su tipo.
-	* @return array Array con los atributos que forman la clave primaria del objeto del objeto como pares <nombre_atributo>=><tipo>.
+	* Returns the attribute that belong to the primary key paired with their type
+	* @return array Array with the form <attribute_name>=><type>.
 	*/
 	public static function metaGetPkAttributes(){
 		$data = array();
@@ -22,8 +22,8 @@ trait Meta{
 	
 	
 	/**
-	* Devuelve los nombres de los atributos que forman la clave primaria de los objetos de tipo DIR_Sede.
-	* @return array Array con los atributos que forman la clave primaria de los objetos de tipo DIR_Sede.
+	* Returns the attributes that form the primary key.
+	* @return array Array with the attribute that form the primary key.
 	*/
 	public static function metaGetPkAttributeNames(){
 		$data = static::$PK_ATTRIBUTES;
@@ -32,8 +32,14 @@ trait Meta{
 	
 	
 	/**
-	* Devuelve los nombres de los atributos del objeto junto con su tipo semántico como array.
-	* @return array Array con los atributos del objeto del objeto como pares <nombre_atributo>=>propiedades('type'=><tipo_semántico>,'default'=><valor por defecto>,'values'=>'valores asignados si es un select'.
+	* Returns the attributes of this model paired with their properties.
+	* Each property is composed of the following attributes:
+	* -type: type of the attribute.
+	* -default: default value of the attribute.
+	* -null: is nullable?
+	* -auto: if the field is auto fillable.
+	* -subtype: some types have also subtypes, e. g. relationships have "ForeignKey" as a subtype.
+	* @return array Array with the form <attribute_name>=><properties>.
 	*/
 	public static function metaGetAttributes(){
 		$data = static::$ATTRIBUTES;
@@ -42,14 +48,16 @@ trait Meta{
 	
 	
 	/**
-	* Devuelve los metatributos del atributo cuyo nombre se le pasa como parámetro a la función
-	* @param string attrName Nombre del atributo que se quiere consultar
-	* @return array Array con los metaatributos del atributo pasado como parámetro.
-	*/
+	* Returns the attribute properties of $attrName.
+	* 
+	* @param type $attrName Name of the attribute.
+	* @return array of properties, see metaGetAttributes for an explanation.
+	* @throws UnexpectedValueException
+	 */
 	public static function metaGetAttribute($attrName){
 		if(!isset(static::$ATTRIBUTES[$attrName])){
 			$class = get_called_class();
-			throw new UnexpectedValueException("El atributo {$attrName} no existe en el modelo {$class}");
+			throw new \UnexpectedValueException("{$attrName} is not an attribute of model {$class}");
 		}
 		
 		$data = static::$ATTRIBUTES[$attrName];
@@ -58,8 +66,8 @@ trait Meta{
 	
 	
 	/**
-	* Devuelve los atributos del objeto que son de tipo blob.
-	* @return array Array con los atributos del objeto del objeto que son de tipo blob con el formato <nombre_atributo>=><propiedades>.
+	* Returns the blob attributes of this model paired with their properties.
+	* @return array Array with the form <blob_attribute_name>=><properties>.
 	*/
 	public static function metaGetBlobAttributes(){
 		$blobs = [];
@@ -73,8 +81,8 @@ trait Meta{
 	
 	
 	/**
-	* Devuelve los nombres de los atributos del objeto junto con su tipo como array.
-	* @return array Array con los atributos del objeto del objeto como pares <nombre_atributo>=><tipo>.
+	* Returns the attribute names paired with their type
+	* @return array Array with the form <attribute_name>=><type>.
 	*/
 	public static function metaGetAttributeTypes(){
 		$data = array();
@@ -86,8 +94,8 @@ trait Meta{
 	
 	
 	/**
-	 * Devuelve los nombres de los atributos del objeto cuyo tipo no es blob.
-	 * @return array Array con los nombres de los atributos del objeto del objeto que no son blob.
+	 * Return a list of attributes that are not blobs.
+	 * @return array Array with the names of the non-blob attributes.
 	 * */
 	public static function metaGetSelectableAttributes(){
 		$data = array();
@@ -101,9 +109,9 @@ trait Meta{
 	
 	
 	/**
-	* Devuelve los nombres de los atributos del objeto.
-	* @return array Array con los atributos del objeto del objeto <nombre_atributo>.
-	*/
+	 * Return a list of attributes.
+	 * @return array Array with the names of the attributes.
+	 * */
 	public static function metaGetAttributeNames(){
 		$class_attributes = static::initAttributesMetaInformation();
 		return $class_attributes["attribute_names"];
@@ -111,8 +119,8 @@ trait Meta{
 	
 	
 	/**
-	* Informa si la clase tiene un atributo (original, no un atributo dinámico) con ese nombre.
-	* @return boolean true si la clase tiene un atributo con ese nombre, false en otro caso.
+	* Inform if the object as defined $attributeName as an attribute.
+	* @return boolean true if this attribute belongs to the model, false otherwise.
 	*/
 	public static function metaHasAttribute($attributeName){
 		return array_key_exists($attributeName, static::$ATTRIBUTES);
@@ -120,39 +128,38 @@ trait Meta{
 	
 	
 	/**
-	* Devuelve un valor de un enumerado para una clave determinada.
-	* @param string $attributeName Nombre del atributo cuyo valor se quiere obtener para una clave determinada.
-	* @param string $key Clave determinada cuyo valor quiere obtenerse.
-	* @return string Valor determinado asociado a la clave $key en el atributo $attributeName.
+	* Return the value for a particular value of an enumerable attribute.
+	* @param string $attributeName Enumerable attribute name.
+	* @param string $key Key of that enumerable attribute name.
+	* @return string Paired value with $key for attribute $attributeName.
 	**/
 	public static function metaGetEnumAttributeValue($attributeName, $key){
-		// Primero comprobamos si existe el atributo
+		// Attribute must belong to model
 		if(!static::metaHasAttribute($attributeName)){
-			throw new UnexpectedValueException("El atributo {$attributeName} no existe en este modelo");
+			throw new \UnexpectedValueException("Attribute {$attributeName} does not exist in this model");
 		}
-		// Después comprobamos si es de tipo enumerado
+		// Attribute must be an enum
 		$attribute = static::$ATTRIBUTES[$attributeName];
 		if(!isset($attribute["subtype"]) or $attribute["subtype"]!="enum"){
-			throw new UnexpectedValueException("El atributo {$attributeName} no es de tipo enumerado");
+			throw new \UnexpectedValueException("Attribute {$attributeName} is not an enum");
 		}
-		// También comprobamos si el atributo tiene valores definidos
+		// Attribute must have values
 		if(!isset($attribute["values"]) or !is_array($attribute["values"])){
-			throw new UnexpectedValueException("El atributo {$attributeName} no tiene valores");
+			throw new \UnexpectedValueException("Attribute {$attributeName} does not have values");
 		}
-		// Por último, comprobamos que existe la clave que nos interesa
+		// Does our $key exists?
 		if(!isset($attribute["values"][$key])){
-			throw new UnexpectedValueException("La clave {$key} no existe en el atributo enumerado {$attributeName}");
+			throw new \UnexpectedValueException("Key {$key} does not exist in the attribute {$attributeName}");
 		}
-		// Ya sabemos que existe y por tanto, devolvemos el valor asociado
-		// a la clave $key
+		// Return associated value
 		return $attribute["values"][$key];
 	}
 	
 	
 	/**
-	* Informa de las relaciones (y de su cardinalidad) que tiene este modelo de objeto con el resto del espacio de objetos.
-	* Notemos que para puede haber varias relaciones con el mismo modelo, así que por eso se usa el curstom_name como clave.
-	* @return array Array con pares <nombre personalizado del modelo> => array('type'=>'one-to-one'|'one-to-many'|'many-to-one'|'many-to-many', 'model'=><nombre del modelo> , 'method'=><Nombre del método en este modelo que carga los objetos de ese tipo relacionados>), 'source_is_master'=><true|false en función de si el origen actúa como máster>.
+	* Returns an array with the relationships.
+	* See docs for more information about relationship format.
+	* @return array Array of pairs <relationship_name> => <relationship_properties>.
 	*/
 	public static function metaGetRelationships(){
 		return static::$RELATIONSHIPS;
@@ -160,8 +167,9 @@ trait Meta{
 	
 	
 	/**
-	* Obtiene una relación.
-	* @return array Array con la información de la relación.
+	* Gets data forma a relationship.
+	* @param string $relationshipName Name of the relationship.
+	* @return array Array with the properties of that relationship.
 	*/
 	public static function metaGetRelationship($relationshipName){
 		if(!isset(static::$RELATIONSHIPS[$relationshipName])){
@@ -177,10 +185,10 @@ trait Meta{
 	
 	
 	/**
-	 * Informa si el modelo tiene una relación con el nombre $relationshipName.
+	 * Does the model have a relationship with the name $relationshipName.
 	 * 
-	 * @param string $relationshipName Nombre de la relación.
-	 * @return boolean True si el modelo actual tiene una relación con el nombre $relationshipName.
+	 * @param string $relationshipName Relationship name.
+	 * @return boolean true if $relationshipName relationship exists, false otherwise.
 	 **/
 	public static function metaHasRelationship($relationshipName){
 		return isset(static::$RELATIONSHIPS[$relationshipName]);
@@ -188,18 +196,20 @@ trait Meta{
 	
 	
 	/**
-	 * Devuelve una relación como un array convertido a formato que toma el método filter de LuloQuery.
+	 * Returns a relationship as a LuloQuery filter. It is useful for computing
+	 * conditions in the remote tables.
 	 * 
-	 * @param string $remoteModel Nombre del modelo remoto.
-	 * @param string $remoteRelationshipName Nombre de la relación remota.
-	 * @return array Array con la estructura para ser usada en un filter de LuloQuery.
+	 * @param string $remoteModel Remote model name.
+	 * @param string $remoteRelationshipName Relationship name.
+	 * @return array Array with a LuloQuery filter.
 	 **/
 	protected function metaGetRelationshipAsLuloQueryFilter($remoteModel, $remoteRelationshipName){
 		
 		$relationship = $remoteModel::$RELATIONSHIPS[$remoteRelationshipName];
 		$relationshipType = $relationship["type"];
 		
-		// Caso de que la relación sea muchos a muchos
+		// If it is many to many, use the operator :: to show that there are
+		// remote attributes in the filter
 		if($relationshipType == "ManyToMany"){
 			$relationshipConditions = $relationship["conditions"];
 			$filter = [];
@@ -210,15 +220,13 @@ trait Meta{
 			return $filter;
 		}
 		
-		// Para el caso de que sea ForeighKey o OneToMany, la relación es entre
-		// las dos tablas y no tiene tabla intermedia.
+		// If the relationship is ForeighKey or OneToMany, there is no
+		// intermediate table and it is easier
 		$relationshipCondition = $relationship["condition"];
-		// Creamos el filtro a partir de lo especificado en la relación
-		// del modelo remoto
+		// Filter creation
 		$filter = [];
 		foreach($relationshipCondition as $localAttribute=>$remoteAttribute){
-			// Si la relación es con la misma tabla, no le ponemos el prefijo
-			// con el nombre de la relación
+			// Relationship with the same table
 			if($relationship["model"] == static::CLASS_NAME){
 				$filter["$localAttribute"] = $this->getAttr($remoteAttribute);
 			}else{
