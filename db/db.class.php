@@ -617,32 +617,33 @@ class DB {
 		return $sqlFields;
 	}
 
-	/**
-	 * Genera la cláusula LIMIT.
-	 * @param array|string $limit Array con el inicio y el tamaño de la cláusula limit. También permite que se le pase una cadena LIMIT correcta (con o sin la palabra clave LIMIT).
-	 * @return string Cadena con la cláusula LIMIT correcta.
-	 * */
-	public static function makeLimit($limit = null) {
-		if ($limit === null)
-			return "";
-		// Si alguien ha sido tan ceporro de meterle una cadena, comprueba si tiene la palabra clave LIMIT
-		// En caso de que no, se le añade, y esperemos que haya metido el límite correctamente.
-		if (is_string($limit)) {
-			if (!preg_match("/^limit/i", $limit))
-				$limit = " LIMIT " . $limit;
-			return $limit;
+	public static function makeLimit($mylimit=null)
+	{
+		
+		//esta función también hay que sobrescribirla siempre debemos empezar en la posición 0
+		$limit = array(0,-1);
+		
+		if(is_numeric($mylimit)){
+			$limit = array(0,$mylimit);
 		}
-		$ini = 0;
-		if (is_int($limit) and $limit > 0) {
-			$size = $limit;
-		} elseif (is_array($limit)) {
-			$size = $limit[0];
-			if (count($limit) > 1) {
-				$ini = $limit[0];
-				$size = $limit[1];
+		
+		elseif(is_string($mylimit)){
+			// Si alguien ha sido tan ceporro de meterle una cadena, comprueba si tiene la palabra clave LIMIT
+			// En caso de que no, se le añade, y esperemos que haya metido el límite correctamente.
+			preg_match("#[^\d]*(\d+)[^\d]*(\d+)?#", $mylimit, $aux);//extrae los valores usados en la consulta limit
+			$limit[0] = $aux[1];
+			if(isset($aux[2]))
+				$limit[1] = $aux[2];
+			
+		}elseif(is_array($mylimit)){
+			if(isset($mylimit[1])){
+					$limit = $mylimit;
+			} else {
+					$limit[1] = $mylimit[0];
 			}
 		}
-		return " LIMIT $ini, $size";
+
+		return $limit;
 	}
 
 	/**
@@ -1111,20 +1112,23 @@ class DB {
 	 * @param array|string $limit Límite de filas que se seleccionarán. Por defecto es null.
 	 */
 	public static function getAll($table, $fields = "*", $condition = null, $order = null, $limit = null) {
-
-		$fields = self::makeFieldsToSelect($fields);
-		$pcondition = self::makeWhereCondition($condition);
-		$order = self::makeOrderBy($order);
-		$limit = self::makeLimit($limit);
-
-		$sql = "SELECT $fields FROM $table $pcondition $order $limit";
-		//print $sql."\n<br>";
-
-		$res = static::$db_connection->getAll($sql);
-		// var_dump($res);
-		return $res;
+		$rs = static::getAllAsRecordSet($table, $fields, $condition, $order, $limit);
+		return $rs->getArray();
 	}
 
+	public static function getAllAsRecordSet($table, $fields="*", $condition=null, $order=null, $limit=null)
+	{
+		$limit_interval = static::makeLimit($limit);
+		$sql = static::generateSQLForGetAll($table, $fields, $condition, $order);
+		$rs = static::$db_connection->SelectLimit($sql, $limit_interval[1], $limit_interval[0]);
+		return $rs;
+	}
+	
+	private static function generateSQLForGetAll($table, $fields="*", $condition=null, $order=null){
+		$fields_to_select = static::makeFieldsToSelect($fields);
+		return "SELECT {$fields_to_select} FROM {$table} ".static::makeWhereCondition($condition)." ".static::makeOrderBy($order);
+	}
+	
 	/**
 	 * Devuelve todas las filas de una tabla que cumplen con una condición determinada ordenadas de forma aleatoria.
 	 * @param string $table Nombre de la tabla a consultar.
@@ -1537,7 +1541,7 @@ class DB {
 		return substr($tableName, 0, $pos);
 	}
 
-	/**
+		/**
 	 * Unión natural de tablas con condiciones complejas.
 	 * Implementa el inner join de las tablas que se le pasa, como lo hace. Interpreta que la primera tabla es la que va en el select y añade tantos inner join como tablas se añadan
 	 * @param Array $tables Array Contiene los nombres de las tablas sobre los que vamos a efectuar el inner join, para cada tabla se le puede indicar que campos son los que debe obtener, si no se le indica nada obtiene *, si no se necesita nada se le pasa array()
@@ -1553,137 +1557,149 @@ class DB {
 	 * 	"straight_join" => añade el parámetro STRAIGHT_JOIN en el select, OJO sólo utilizar cuando no quede más remedio
 	 * @return array Array de arrays con los valores de los campos de la/s tabla/s indicada/s.
 	 * */
-	public static function join($tables, $onConditions = null, $whereConditions = null, $params = null) {
-
-
+	public static function join($tables, $onConditions=null,  $whereConditions=null, $params=null)
+	{
+		$rs = static::joinAsRecordSet($tables, $onConditions,  $whereConditions, $params);
+		return $rs->getArray();
+	}
+	
+	public static function joinAsRecordSet($tables, $onConditions=null,  $whereConditions=null, $params=null)
+	{
 		$tablesDict = array();
 		$tablesOrig = array();
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		// Obtenemos los campos, si no es un array cogemos el *
 		$fieldSQL = "";
 		$i = 0;
-		foreach ($tables as $table_name => $fields) {
+		foreach($tables as $table_name=>$fields){
 			$tablesOrig[] = $table_name;
-			if (!is_array($fields) && !is_null($fields)) {
+			if(!is_array($fields) && !is_null($fields)){
 				$table_name = $fields;
 				$fieldSQL .= "tabla_$i.*,";
-			} else {
-				if (!empty($fields))
-					foreach ($fields as $f) {
+			}
+			else{
+				if(!empty($fields))
+					foreach($fields as $f){
 						$fieldSQL .= "tabla_$i.$f,";
 					}
-			}
 
-			$table_name = preg_replace("#-alias-$#", "", $table_name);
+			}
+			
+			$table_name = preg_replace("#-alias-$#", "",$table_name);
 			$tablesDict[] = $table_name;
 			$i++;
 		}
 
-		$fieldSQL = substr($fieldSQL, 0, strlen($fieldSQL) - 1);
+		$fieldSQL = substr($fieldSQL, 0, strlen($fieldSQL)-1);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		// obtenemos las condiciones del on
 		$i = 1;
 		$innerSql = "";
-
+		
 		$join = "INNER";
-		if (isset($params["join"]))
+		if(isset($params["join"]))
 			$join = strtoupper($params["join"]);
-
-		$extraWhereCond = array();
-		foreach ($onConditions as $oC) {
-			if (!isset($oC["on"]))
+		
+		$extraWhereCond = array();	
+		foreach($onConditions as $oC){
+			if(!isset($oC["on"]))
 				$on = array_pop($oC);
 			else
 				$on = $oC["on"];
-
-			$joinCond = self::makeJoinCondition($on, "tabla_" . ($i - 1), "tabla_$i");
+			
+			$joinCond = static::makeJoinCondition($on, "tabla_".($i-1), "tabla_$i");
 			$extraJoin = "";
-			if (isset($oC["extra"]) && !empty($oC["extra"])) {
+			if(isset($oC["extra"]) && !empty($oC["extra"])){
 				$extraJoinCond = array();
-				foreach ($oC["extra"] as $field => $cond) {
-					if ($field != "OR" and $field != "AND") {
-						$extraJoinCond["tabla_$i." . $field] = $cond;
-					} else {
-						foreach ($cond as $f => $c)
-							$extraJoinCond[$field]["tabla_$i." . $field] = $cond;
+				foreach($oC["extra"] as $field=>$cond){
+					if($field != "OR" and $field != "AND"){
+							$extraJoinCond["tabla_$i.".$field] = $cond;
+					}else{
+						foreach($cond as $f=>$c)
+							$extraJoinCond[$field]["tabla_$i.".$field] = $cond;
 					}
 				}
-				$extraJoin = " AND " . self::makeWhereCondition($extraJoinCond, false);
+				$extraJoin = " AND ".static::makeWhereCondition($extraJoinCond, false);
 				//$extraJoin = preg_replace("#\s* WHERE \s*#"," AND ",$extraJoin);
 			}
 			//como el left join obtiene resultados distintos segun pongas condiciones en el ON o en el WHERE, permitimos que se definan donde quieren ir las condiciones que no relacionan tablas
-			if (isset($oC["where"]) && !empty($oC["where"])) {
+			if(isset($oC["where"]) && !empty($oC["where"])){
 				$extraJoinCond = array();
-				foreach ($oC["where"] as $field => $cond) {
-					if ($field != "OR" and $field != "AND") {
-						$extraWhereCond["tabla_$i." . $field] = $cond;
-					} else {
-						foreach ($cond as $f => $c)
-							$extraWhereCond[$field]["tabla_$i." . $field] = $cond;
+				foreach($oC["where"] as $field=>$cond){
+					if($field != "OR" and $field != "AND"){
+							$extraWhereCond["tabla_$i.".$field] = $cond;
+					}else{
+						foreach($cond as $f=>$c)
+							$extraWhereCond[$field]["tabla_$i.".$field] = $cond;
 					}
 				}
 			}
-
+			
 			$innerSql .= "$join JOIN {$tablesDict[$i]} tabla_$i ON $joinCond $extraJoin \n";
 			$i++;
 		}
 		//condiciones sobre la tabla_0 para hacer el where
-
-		if (!is_null($whereConditions)) {
-
-			foreach ($whereConditions as $field => $cond) {
-				if ($field != "OR" and $field != "AND") {
-					$extraWhereCond["tabla_0." . $field] = $cond;
-				} else {
-					foreach ($cond as $f => $c)
-						$extraWhereCond[$field]["tabla_0." . $field] = $cond;
+		
+		if(!is_null($whereConditions)){
+			
+			foreach($whereConditions as $field=>$cond){
+				if($field != "OR" and $field != "AND"){
+						$extraWhereCond["tabla_0.".$field] = $cond;
+				}else{
+					foreach($cond as $f=>$c)
+						$extraWhereCond[$field]["tabla_0.".$field] = $cond;
 				}
 			}
 		}
-		$where = self::makeWhereCondition($extraWhereCond);
+		$where = static::makeWhereCondition($extraWhereCond);
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		// Generación de la consulta SQL
 		// Selección de tuplas
-
+		
 		$sqlDistinct = "DISTINCT";
-		if (!isset($params["distinct"]) || !$params["distinct"])
+		if(!isset($params["distinct"]) || !$params["distinct"])
 			$sqlDistinct = "";
-
+		
 		$sqlExplain = "EXPLAIN";
-		if (!isset($params["explain"]) || !$params["explain"])
+		if(!isset($params["explain"]) || !$params["explain"])
 			$sqlExplain = "";
-
+			
 		$sqlStraight = "STRAIGHT_JOIN";
-		if (!isset($params["straight_join"]) || !$params["straight_join"])
+		if(!isset($params["straight_join"]) || !$params["straight_join"])
 			$sqlStraight = "";
 
 		$sql = "$sqlExplain SELECT $sqlStraight $sqlDistinct $fieldSQL \nFROM {$tablesDict[0]} tabla_0 \n $innerSql \n$where ";
-
+		
 		// Si tiene un ORDEN, se lo metemos
-		if (isset($params["order"]) && $params["order"] != null) {
+		if(isset($params["order"]) && $params["order"] != null){
 			$ordenFinal = array();
-			foreach ($params["order"] as $table_name => $fields) {
-				foreach ($fields as $f => $order) {
+			foreach($params["order"] as $table_name=>$fields){
+				foreach($fields as $f=>$order){
 					$pos = array_search($table_name, $tablesOrig);
-					$ordenFinal["tabla_$pos." . $f] = $order;
+					$ordenFinal["tabla_$pos.".$f] = $order;
 				}
 			}
-			$sql .= self::makeOrderBy($ordenFinal) . "\n";
+			$sql .= static::makeOrderBy($ordenFinal)."\n";
 		}
-
+		
 		// Si tiene un LÍMITE, se lo metemos
-		if (isset($params["limit"]) && $params["limit"] != null)
-			$sql .= self::makeLimit($params["limit"]) . "\n";
+		if(isset($params["limit"]) && $params["limit"] != null)
+			$limit = $params["limit"];
+		else
+			$limit = null;
+		
+		$limit = static::makeLimit($limit);
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		// Devolución de resultados
-		if (isset($params["debug"])) {
-			print $sql . "<br/><br/>";
-			die;
+		if(isset($params["debug"])){
+			print $sql."<br/><br/>";die;
 		}
-
-		$results = static::$db_connection->getAll($sql);
-		return $results;
+		
+		$limit = static::makeLimit($limit);
+		$rs = static::$db_connection->SelectLimit($sql,$limit[1],$limit[0]);
+		
+		return $rs;
 	}
 
 	/**

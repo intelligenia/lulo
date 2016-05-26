@@ -3,6 +3,7 @@
 namespace lulo\models\traits;
 
 use lulo\containers\Collection as Collection;
+use lulo\containers\QuerySet as QuerySet;
 
 trait LoadRelated {
 	/**
@@ -13,7 +14,7 @@ trait LoadRelated {
 	 * @param $limit Límite de los objetos remotos.
 	 * @return array Array simple si la relación es *ToOne, o array de arrays si es OneToMany.
 	 * */
-	protected static function _dbLoadRelatedNoModel($relationName, $remoteCondition=[], $order=null, $limit=null){
+	protected static function _dbLoadRelatedNoModel($relationName, $remoteCondition=[], $order=null, $limit=null, $container="array"){
 		// Objeto DBHelper en un variable para poder llamar a
 		// su método estático de carga
 		$db = static::DB;
@@ -49,12 +50,17 @@ trait LoadRelated {
 		
 		// Relación uno a muchos
 		if($relationshipType == "OneToMany"){
-			$rows = $db::getAll($relatedTable, $columnsStr, $remoteCondition, $order, $limit);
-			return $rows;
+			if($container == "collection"){
+				return new Collection($db::getAll($relatedTable, $columnsStr, $remoteCondition, $order, $limit));
+			}
+			if($container == "queryset"){
+				return new QuerySet($db::getAllAsRecordSet($relatedTable, $columnsStr, $remoteCondition, $order, $limit));
+			}
+			return $db::getAll($relatedTable, $columnsStr, $remoteCondition, $order, $limit);
 		}
 		
 		// No se aceptan relaciones de muchos a muchos
-		throw InvalidArgumentException("Sólo se aceptan los tipos 'OneToMany' y 'ManyToOne' en las relaciones a tabla");
+		throw \InvalidArgumentException("Sólo se aceptan los tipos 'OneToMany' y 'ManyToOne' en las relaciones a tabla");
 	}
 	
 	
@@ -143,7 +149,7 @@ trait LoadRelated {
 				$relations[$numTables-1]["extra"] = $remoteCondition;
 			}
 			else{
-				throw Exception("Se esperaba ['remoteObjectConditions'=>[], 'nexiiConditions'=>[ [Condiciones Nexo1], [Condiciones Nexo2], ..., [Condiciones NexoN] ]]");
+				throw \Exception("Se esperaba ['remoteObjectConditions'=>[], 'nexiiConditions'=>[ [Condiciones Nexo1], [Condiciones Nexo2], ..., [Condiciones NexoN] ]]");
 			}
 		}
 		
@@ -166,13 +172,19 @@ trait LoadRelated {
 		//////////////////
 		// Consulta SQL a la base de datos
 		$db = static::DB;
-		$rows = $db::join($fieldsByTable, $relations, $localConditions, $params);
 		
+		if($container=="queryset"){
+			return new QuerySet($db::joinAsRecordSet($fieldsByTable, $relations, $localConditions, $params), $foreignClass);
+		}
+		
+		$rows = $db::join($fieldsByTable, $relations, $localConditions, $params);
 		// Obtención de los objetos remotos
 		$foreignObjects = $foreignClass::arrayFactoryFromRows($rows);
+		
 		if($container=="collection"){
 			return new Collection($foreignObjects);
 		}
+		
 		return $foreignObjects;
 	}
 	
@@ -260,15 +272,12 @@ trait LoadRelated {
 		/// del objeto remoto.
 		if($relationshipType=="OneToMany"){
 			$container = strtolower($container);
-			if($container=="collection"){
-				$remoteObjects = $foreignClass::dbLoadAll($remoteCondition, $order, $limit, $container);
-				return $remoteObjects;
-			}
-			throw UnexpectedValueException("El tipo de contenedor {$container} no está implementado");
+			$remoteObjects = $foreignClass::dbLoadAll($remoteCondition, $order, $limit, $container);
+			return $remoteObjects;
 		}
 		
 		// Por si hemos introducido una relación que no está implementada
-		throw UnexpectedValueException("El tipo de relación {$relationshipType} no está implementado");
+		throw \UnexpectedValueException("El tipo de relación {$relationshipType} no está implementado");
 	}
 	
 	
@@ -307,6 +316,6 @@ trait LoadRelated {
 		}
 		
 		// Por si hemos introducido una relación que no existe
-		throw new UnexpectedValueException("La relación {$relationName} no existe");
+		throw new \UnexpectedValueException("La relación {$relationName} no existe");
 	}
 }

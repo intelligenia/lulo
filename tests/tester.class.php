@@ -437,6 +437,13 @@ class Tester{
 		print $loadedTags[7]->str()."<br/>";
 		print $loadedTags[8]->str()."<br/>";
 		
+		print "Cinco primeras etiquetas<br/>";
+		// Obtención de las etiquetas mediante la operación dbLoad
+		$loadedTags = Tag::dbLoadAll(["description" => ["like"=>"$prefix%"]], $order=null, $limit=[0, 5]);
+		foreach($loadedTags as $loadedTag){
+			print " -".$loadedTag->str()."<br/>";
+		}
+		
 		// Comprobación de que las etiquetas se han creado con éxito
 		$tags = Tag::objects()->filter(["description__startswith" => $prefix]);
 		if($numTags == $tags->count()){
@@ -447,6 +454,10 @@ class Tester{
 		$tags->delete();
 		
 		print "FIN de tests sobre DBLOAD<br/><br/>";
+	}
+	
+	public static function dbLegacy_tests(){
+		
 	}
 	
 	/**
@@ -464,6 +475,8 @@ class Tester{
 		static::count_tests();
 		static::blob_tests();
 		static::dbLoad_tests();
+		
+		static::dbLegacy_tests();
 		
 		die();
 	}

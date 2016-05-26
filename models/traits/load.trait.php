@@ -3,6 +3,7 @@
 namespace lulo\models\traits;
 
 use lulo\containers\Collection as Collection;
+use lulo\containers\QueryResult as QueryResult;
 
 /**
  * Load trait for ROModel.
@@ -94,30 +95,37 @@ trait Load {
 	 * @return array Array de objetos que cumplen esa condición
 	 * @pre El operador de comparación pasado en $condition ha de ser consistente con el tipo de dato de la columna de la tabla.
 	*/ 
-	public static function dbLoadAll($condition=null, $order=null, $limit=null, $container="collection"){
+	public static function dbLoadAll($condition=null, $order=null, $limit=null, $container="queryresult"){
 		// El onmipresente conector con la base de datos
 		$db = static::DB;
 		// Obtención de los campos que se cargan den el SELECT
 		$columnsStr = static::getSelectColumnExpressionSQL();
 		// Obtención de las condiciones finales (añadiendo las condiciones implícitas)
 		$finalCondition = static::getBaseCondition($condition);
-		// TODOs :
-		// 1.- Comprobar que no existe ningún campo que sea una relación
-		// 2.- Comprobar que todos los campos de las condiciones existan
-		$rows = $db::getAll(static::getTableName(), $columnsStr, $finalCondition, $order, $limit);
-		if(count($rows)==0 or $rows==null or $rows==false){
-			if($container === "collection"){
-				return new Collection();
-			}
-			return null;
-		}
 		
-		// Devolvemos en función del contenedor que se haya seleccionado
-		$arrayOfObjects = static::arrayFactoryFromRows($rows);
-		if($container === "collection"){
-			return new Collection($arrayOfObjects);
+		if($container == "queryresult"){
+			$rs = $db::getAllAsRecordSet(static::getTableName(), $columnsStr, $finalCondition, $order, $limit);
+			return new QueryResult($rs, get_called_class());
+		
+		}elseif($container == "collection"){
+			// TODOs :
+			// 1.- Comprobar que no existe ningún campo que sea una relación
+			// 2.- Comprobar que todos los campos de las condiciones existan
+			$rows = $db::getAll(static::getTableName(), $columnsStr, $finalCondition, $order, $limit);
+			if(count($rows)==0 or $rows==null or $rows==false){
+				if($container === "collection"){
+					return new Collection();
+				}
+				return null;
+			}
+
+			// Devolvemos en función del contenedor que se haya seleccionado
+			$arrayOfObjects = static::arrayFactoryFromRows($rows);
+			if($container === "collection"){
+				return new Collection($arrayOfObjects);
+			}
+			return $arrayOfObjects;
 		}
-		return $arrayOfObjects;
 	}
 	
 	
