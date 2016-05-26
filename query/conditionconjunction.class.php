@@ -3,23 +3,23 @@
 namespace lulo\query;
 
 /**
- * Conjunción de condiciones. Esto es, cada uno de los grupos de las condiciones
- * creadas por el usuario convertidos a un formato intermedio para facilitar
- * su tratamiento.
- * @author diegoj
+ * Condition conjunction. That is, each one of the condition groups created
+ * for the user that are converted in an intermediate objects this class.
+ * The aim of this approach is making easier dealing with them.
+ * @author Diego J. Romero López
  */
 class ConditionConjunction {
 	
-	/** Objeto LuloQuery del que depende */
+	/** Query object this condition depends on */
 	public $luloquery;
 	
-	/** Conjunción original del que se han extraído la consulta */
+	/** Original conjunction */
 	protected $queryConjunction;
 	
-	/** Listado con todas las condiciones independientemente de su entidad */
+	/** Condition list */
 	public $conditions;
 	
-	/** Tabla hash en el que las condiciones están agrupadas por modelo */
+	/** Conditions by model hash */
 	protected $conditionsByModel;
 	
 	/**
@@ -36,38 +36,34 @@ class ConditionConjunction {
 		$this->luloquery = $luloquery;
 		$this->positive = $positive;
 
-		// Guardamos el listado de arrays con la consulta original
+		// Keeping the original query conjunction
 		$this->queryConjunction = $queryConjunction;
 		
-		// Guardamos en lugares separados las condiciones y las condiciones
-		// por entidad. Es cierto que nos servirían con las condiciones por
-		// entidad, pero bueno.
+		// Intialization of the conditions
 		$this->conditions = [];
 		$this->conditionsByModel = [];
 		
 		foreach($this->queryConjunction as $field=>$value){
 			
-			// Construcción de la condición iésima
+			// I-th condition
 			$conditionI = new \lulo\query\Condition($this, $field, $value);
 			
-			// Guardamos las condiciones agrupadas por el modelo sobre el que
-			// actúan. Esto nos permitirá saber qué modelos hay en juego
-			// en esta consulta.
+			// Ith-condition in conditions by model
 			$model = $conditionI->getModel();
 			if(!isset($this->conditionsByModel[$model])){
 				$this->conditionsByModel[$model] = [];
 			}
 			$this->conditionsByModel[$model][] = $conditionI;
 			
-			// Almacenamos la condición también en un listado de condiciones
+			// I-th condition in the condition list
 			$this->conditions[] = $conditionI;
 		}
 	}
 	
 	
 	/**
-	 * Obtiene una array con las condiciones agrupadas por modelos.
-	 * @return array Array con las condiciones agrupadas por modelos.
+	 * Gets conditions grouped by model.
+	 * @return array Array of the conditions grouped by model.
 	 */
 	public function getconditionsByModel(){
 		return $this->conditionsByModel;

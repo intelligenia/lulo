@@ -1,9 +1,8 @@
 <?php
 
 /**
- * Etiquetas de los usuarios.
- * Clase de ejemplo para ilustrar cómo usar los modelos de Lulo.
- * @author Diego J. Romero López en intelligenia.
+ * Tag example class that shows how to use LuloModel models.
+ * @author Diego J. Romero López at intelligenia.
  * */
 class Tag extends \lulo\models\LuloModel{
 	/******************************************************************/

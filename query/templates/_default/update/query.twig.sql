@@ -1,4 +1,4 @@
-{% extends "query.twig.sql" %}
+{% extends "select/query.twig.sql" %}
 
 
 {% block select %}

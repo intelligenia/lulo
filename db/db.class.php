@@ -7,6 +7,7 @@ require LULO_DIR__DEPENDENCES__VENDOR . "/autoload.php";
 
 /**
  * Dastabase abstraction layer.
+ * Contains deprecated operations like 
  */
 class DB {
 
@@ -186,18 +187,6 @@ class DB {
 	 * @see strNotEq
 	 */
 	static function check($field_name, $field_value = null) {
-		/*
-
-		  echo "habria devuelto "."$field_name ".self::strEq($field_value)."<br/>";
-
-		  if($field_value === null)
-		  {
-		  echo "devuelvo $field_name IS NULL<br/><br/>";
-		  return "$field_name IS NULL";
-		  }
-		  echo "devuelvo $field_name = ".static::$db_connection->qstr($field_value)."<br/><br/>";
-		  return "$field_name = ".static::$db_connection->qstr($field_value);
-		 */
 		return "$field_name " . self::strEq($field_value);
 	}
 
@@ -218,9 +207,6 @@ class DB {
 			$data = static::$db_connection->qstr($packet);
 			static::$db_connection->Execute("UPDATE $tname SET $field=concat($field,$data) WHERE $where_cond");
 		}
-		/* $data = array();
-		  $data[$field]=&$value;
-		  self::update($tname, &$data, $where_cond); */
 	}
 
 	/**

@@ -1,8 +1,7 @@
 <?php
 
 /**
-* Clase MimeTypeFinder. Encuentra un mimetype a partir de una extensión de un fichero.
-* @package helper
+* MimeTypeFinder class. Base utility for the simple example of the Social-Network classes.
 */
 class MimeTypeFinder{
 
@@ -14,27 +13,23 @@ class MimeTypeFinder{
 	];
 	
 	/**
-	 * Devuelve el mimetype a partir del nombre de archivo.
-	 * @param string $filename Nombre de archivo del que se desea sacar el mimetype.
-	 * @pre El nombre de archivo ha de contener la extensión.
-	 * @return mixed string Se devuelve el mimetype del archivo o si no existe, se devuelve NULL.
+	 * Returns the mimetype from the filename extension.
+	 * @param string $filename File name.
+	 * @return mixed string Mime type of the filename (based on its extension)
+	 * or null if it is not recognized.
 	 */
 	public static function getMimetypeFromFileName($filename)
 	{
 		$matches = array();
 		if(preg_match("/(.+)(\.)(.+)$/", $filename, $matches) == 0){
-			var_dump($filename);
-			print "sdfasdfsdf";
 			return null;
 		}
 
 		$ext = strtolower($matches[3]);
 		// Si existe el mimetype, lo devolvemos
 		if(isset(static::$MIMETYPES[$ext])){	
-			print "XXXXX";
 			return static::$MIMETYPES[$ext];
 		}
-		print "YYY";
 		return null;
 	}
 	

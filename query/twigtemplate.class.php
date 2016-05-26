@@ -6,31 +6,32 @@ require_once LULO_DIR__DEPENDENCES__VENDOR.'/twig/twig/lib/Twig/Autoloader.php';
 require_once __DIR__.'/twigluloloader.class.php';
 
 /**
- * Clase que actúa como una envoltura del sistema de plantillas Twig.
- * Twig es un sistema que sigue la sintaxis del sistema de plantillas Django (o Jinja2)
- * Para ver qué es Twig y las opciones que tiene vea primero la web y la documentación.
- * Para más información visite <a href="http://twig.sensiolabs.org/documentation">esta página</a>.
+ * Wrapper class that hides the internals of twig to the rest of this system.
+ * 
  * */
 class TwigTemplate
 {
-	/** Instancia de Smarty a la que sirve de envoltura la clase */
-	public $twig;
+	/** TWIG instance */
+	private $twig;
 
-	/** Almacena la ruta completa de la plantilla que usará la instancia de Twig */
-	protected $resource;
+	/** Complete path of the twig template that will be used */
+	private $resource;
 
 	/**
-	* Nombre de la clase actual.
+	* Class name.
 	*/
 	const CLASS_NAME = "TwigTemplate";
 	
+	/**
+	* Cache path.
+	*/
 	const CACHE_PATH = '/tmp/twig/cache';
 
 	/**
-	* Método mágico: devuelve lo que devuelva la llamada a un método que no se encuentra en el objeto actual pero sí en el objeto Smarty.
-	* @param string $methodName Nombre del método llamado.
-	* @param array $args Array con los atributos con los que se llama el método.
-	* @return mixed Valor devuelto por la llamada del método en el objeto guardado en el array de atributos dinámicos o null si no existe.
+	* Magic method. Pass every non-recognized method call to the Twig Envinroment.
+	* @param string $methodName Non-recognized called method.
+	* @param array $args Array with method attributes.
+	* @return mixed Result of the call of Twig_Environment::$methodName.
 	*/
 	public function __call($methodName, $args)
 	{
@@ -40,15 +41,15 @@ class TwigTemplate
 			}
 			return $this->twig->$methodName();
 		}
-		// Avisamos de que ha ejecutado un método que no existe ni en él ni en el objeto Smarty interno
-		trigger_error("El método $methodName no existe en la clase ".self::CLASS_NAME." ni en el objeto Twig interno", E_USER_WARNING);
-		return null;
+		// This method does not exist in TwigTemplate nor in Twig_Environment
+		throw new \BadFunctionCallException("Method $methodName does not exist ".self::CLASS_NAME." nor in Twig_Environment internal object");
 	}
 
 	/**
-	 * Construye objetos Twig.
-	 * Método protegido, no se ha de llamar nunca desde fuera.
-	 * @return object Objeto Twig para inicializar el atributo $twig de la clase.
+	 * Creates Twig_Environments objects.
+	 * Internal method. Do not use.
+	 * @param boolean $debug_mode Should we use debug_mode? Default to false.
+	 * @return object Twig_Environment object used for initialize $twig attribute of this class.
 	 * */
 	protected static function twigFactory($debug_mode=false)
 	{
@@ -58,25 +59,23 @@ class TwigTemplate
 			"cache" => static::CACHE_PATH,
 			"debug" => $debug_mode
 		));
-		////////////////////////////////////////////////////////////////////
-		// ¿Estamos en el modo de depuración?
+		// Debug mode is activated?
 		if($debug_mode){
 			$twig->addExtension(new Twig_Extension_Debug());
         }
 		
-		////////////////////////////////////////////////////////////////////
-		// Devolvemos el objeto twig
+		// Return Twig Environment object
 		return $twig;
 	}
 
 	/**
-	 * Construye objetos Twig a partir de cadenas.
-	 * Método protegido, no se ha de llamar nunca desde fuera.
-	 * @return object Objeto Twig para inicializar el atributo $twig de la clase.
+	 * Create Twig objects from string.
+	 * Internal method. Do not use.
+	 * @param boolean $debug_mode Should we use debug_mode? Default to false.
+	 * @return object Twig_Environment object used for initialize $twig attribute of this class.
 	 * */
 	protected static function twigFactoryFromString($debug_mode=false)
 	{
-		global $_ewconfig;
 		\Twig_Autoloader::register();
 
 		$loader = new \Twig_Loader_String();
@@ -84,16 +83,18 @@ class TwigTemplate
 			"cache" => static::CACHE_PATH,
 			"debug" => $debug_mode
 		));
+		// Debug mode is activated?
 		if($debug_mode){
 			$twig->addExtension(new \Twig_Extension_Debug());
 		}
+		// Return Twig Environment object
 		return $twig;
 	}
 
 	/**
-	 * Factoría a partir de la ruta de un recurso.
-	 * @param string $resource Ruta de la plantilla que queremos cargar.
-	 * @return object Objeto TwigTemplate con la plantilla $resource cargada.
+	 * Creates a new TwigTemplate from a template $path.
+	 * @param string $resource Template path we want to load.
+	 * @return object TwigTemplate object that contains $resource template file.
 	 * */
 	public static function factoryResource($resource, $debug_mode=false)
 	{
@@ -104,7 +105,7 @@ class TwigTemplate
 	}
 
 	/**
-	 * Alias de la función factoryResource($resource)
+	 * Alias for factoryResource($resource)
 	 * */
 	public static function factoryHtmlResource($resource, $debug_mode=false)
 	{
@@ -112,20 +113,23 @@ class TwigTemplate
 	}
 
 	/**
-	 * Fábrica de cadenas.
+	 * Creates a new TwigTemplate from a Twig template in a string.
+	 * @param string $twig_code String with Twig template code.
+	 * @param boolean $debug_mode Should we use debug mode?
+	 * @return object TwigTemplate object with the contents of $twig_code.
 	 * */
-	public static function factoryString($twigCode, $debug_mode=false)
+	public static function factoryString($twig_code, $debug_mode=false)
 	{
 		$twigTemplate = new TwigTemplate();
-		$twigTemplate->twig = static::twigFactoryFromString($twigCode, $debug_mode);
-		$twigTemplate->resource = $twigCode;
+		$twigTemplate->twig = static::twigFactoryFromString($twig_code, $debug_mode);
+		$twigTemplate->resource = $twig_code;
 		return $twigTemplate;
 	}
 
 	/**
-	 * Renderiza la plantilla
-	 * @param array $replacements Array de reemplazos de la  plantila.
-	 * @return string Cadena con el contenido de la plantilla renderizada.
+	 * Renders the templtes
+	 * @param array $replacements Replacements hash for the template.
+	 * @return string String with the replacements applied to the the template.
 	 * */
 	public function render($replacements=array())
 	{
@@ -133,60 +137,16 @@ class TwigTemplate
 	}
 
 	/**
-	 * Renderiza el código Twig directamente.
-	 * @param string $twigCode Código TWIG que se desea interpretar.
-	 * @param array $replacements Array con los reemplazos que se han de realizar.
-	 * @param boolean $debug_mode Indica si el modo de depuración está activado.
+	 * Renders Twig code.
+	 * @param string $twig_code String with Twig template code.
+	 * @param array $replacements Replacements hash for the template.
+	 * @param boolean $debug_mode Is debug mode activade?
 	 * */
-	public static function renderString($twigCode, $replacements=array(), $debug_mode=false)
+	public static function renderString($twig_code, $replacements=array(), $debug_mode=false)
 	{
-		$twigTemplate = static::factoryString($twigCode, $debug_mode);
+		$twigTemplate = static::factoryString($twig_code, $debug_mode);
 		return $twigTemplate->render($replacements);
 	}
-	
-	/**
-	 * Renderiza la plantilla y la devuelve como un objeto Template.
-	 * @param array $replacements Array de reemplazos de la  plantila.
-	 * @return object Objeto Template con el contenido de la plantilla renderizada.
-	 * */
-	/*public function renderOnTemplate($replacements=array())
-	{
-		return Template::factoryString($this->render($replacements));
-	}*/
-	
-	
-	/**
-	 * Renderiza la plantilla y la devuelve como un objeto Template.
-	 * Alias de renderOnTemplate
-	 * 
-	 * @param array $replacements Array de reemplazos de la  plantila.
-	 * @return object Objeto Template con el contenido de la plantilla renderizada.
-	 * */
-	/*public function renderToTemplate($replacements=array()){
-		return Template::factoryString($this->render($replacements));
-	}*/
-
-	/********************************************************************/
-	/********************************************************************/
-	/********************************************************************/
-	/* Filtros extra para Twig */
-	
-	/*public static function _filter_var_dump($data)
-	{
-		
-		var_dump($data);die;
-		return true;
-	}
-	
-	
-	public static function staticCall($class, $function, $args = array())
-	{
-		if (class_exists($class) && method_exists($class, $function)){
-                    return call_user_func_array(array($class, $function), $args);
-                }
-		return null;
-	}*/
-
 
 }
 

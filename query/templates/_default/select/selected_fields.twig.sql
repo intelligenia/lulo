@@ -1,4 +1,4 @@
-{# Campos select de una sentencia SELECT #}
+{# Select fields in SELECT query #}
 {% macro selected_fields(query, prefix) %}
     {% if query.distinct %}DISTINCT{% endif %}
     {% if not query.selected_fields or query.selected_fields == null or query.selected_fields|length == 0 %}

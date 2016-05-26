@@ -3,56 +3,53 @@
 namespace lulo\query;
 
 /**
- * Representa una referencia al valor actual que tenga la tupla en ese momento.
+ * Reference to current value for a tuple.
  * 
- * Se usa en actualiaciones (UPDATE) y en las condiciones de selección (SELECT).
+ * Used in UPDATE and SELECT statements.
  * 
- * Equivalente a los objetos F de Django.
+ * Similar to F objects in Django (https://docs.djangoproject.com/en/1.7/ref/models/queries/#f-expressions).
  * 
  *  */
 class TupleValue{
 	
-	/** Nombre de la columna a la que se hace referencia */
+	/** Column name to be referenced */
 	protected $fieldName;
 	
-	/** Indica si se ha de comprobar que lo que se pasa es un  */
-	protected $raw = false;
-	
 	/**
-	 * Construye un TupleValue a partir de un nombre de un campo
-	 * @param string $fieldName Nombre de la columna a la que hace referencia.
+	 * Creates a TupleValue for a field.
+	 * @param string $fieldName Referenced field.
 	 */
-	public function __construct($fieldName, $raw=false) {
+	public function __construct($fieldName) {
 		$this->fieldName = $fieldName;
-		$this->raw = $raw;
 	}
 	
 	
 	/**
-	 * Factoría que construye un TupleValue a partir de un nombre de un campo
-	 * @param string $fieldName Nombre de la columna a la que hace referencia.
-	 * @return object Objeto TupleValue para $fieldName.
+	 * Creates a new TupleValue object given its reference field.
+	 * @param string $fieldName Referenced field.
+	 * @return object TupleValue objects for $fieldName.
 	 */
-	public static function n($fieldName, $raw=false){
-		return new TupleValue($fieldName, $raw);
+	public static function n($fieldName){
+		return new TupleValue($fieldName);
 	}
 	
 	
 	/**
-	 * Obtiene el nombre de la columna a la que hace referncia.
-	 * @return string Nombre de la columna.
+	 * Gets referenced field.
+	 * @return string Column name referenced for this object.
 	 * 	 */
 	public function f(){
 		return $this->fieldName;
 	}
 	
-	
 	/**
-	 * Obtiene el nombre de la columna a la que hace referencia.
-	 * @return string Indica si se ha de dejar el nombre del campo tal cual.
+	 * Informs if the field value contains some kind of transformation.
+	 * 
+	 * Not yet implemented.
 	 * 	 */
 	public function isRaw(){
-		return $this->raw;
+		return true;
 	}
+	
 }
 

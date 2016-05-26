@@ -1,7 +1,7 @@
-{# Relación de tipo clave Muchos a Muchos #}
+{# Many-to-Many relationship #}
 {% set condition_i = 0 %}
 
-{# Número de tablas nexo #}
+{# Number of nexus tables #}
 {% set num_junctions = relationship["attributes"]["junctions"]|length %}
 
 {% for junction in relationship["attributes"]["junctions"] %}

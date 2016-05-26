@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * Everything needed to run Lulo.
+ */
+
 define("LULO_DIR", __DIR__);
 define("PARENT_LULO_DIR", __DIR__."/..");
 
@@ -19,9 +23,6 @@ require_once LULO_DIR__CONTAINERS."/collection.class.php";
 require_once LULO_DIR__QUERY."/twigtemplate.class.php";
 
 require_once LULO_DIR__MODELS."/init.php";
-
-
-
 
 
 ?>
