@@ -76,7 +76,7 @@ class User extends \lulo\models\LuloModel{
 		"stack"=>["type"=>"string", "default"=>TEST_STACK, "verbose_name"=>"User dependant stack", "auto"=>true],
 		"id" => ["type"=>"int", "verbose_name"=>"Identificador único del usuario", "auto"=>true],
 		
-                // Proper user fields
+        	// Proper user fields
 		"first_name" => ["type"=>"string", "verbose_name"=>"Name", "access"=>"rw"],
 		"last_name" => ["type"=>"string", "verbose_name"=>"Family name"],
 		"email" => ["type"=>"string", "subtype"=>"email", "verbose_name"=>"E-Mail"],
@@ -84,12 +84,12 @@ class User extends \lulo\models\LuloModel{
 		"username" => ["type"=>"string", "subtype"=>"username", "verbose_name"=>"Username"],
 		"sha1_password" => ["type"=>"string", "verbose_name"=>"Password"],
 		
-                // Photograph of the user. Stored as a blob in database
+        	// Photograph of the user. Stored as a blob in database
 		"main_photo" => ["type"=>"blob", "verbose_name"=>"User photo", "null"=>true, "default"=>null],
 		"main_photo_mimetype" => ["type"=>"string", "verbose_name"=>"Mimetype of main_photo", "default" =>"application/octet-stream"],
 		"main_photo_filename" => ["type"=>"string", "verbose_name"=>"Filename of main_photo", "null"=>true, "default"=>null],
 		
-                // Datetime fields
+        	// Datetime fields
 		"last_update_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Last update of this object", "auto"=>true],
 		"creation_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Creation datetime of this object", "auto"=>true],
 	];
