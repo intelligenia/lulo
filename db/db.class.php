@@ -58,6 +58,12 @@ class DB
                                         mysqli_set_charset(static::$db_connection->_connectionID, 'utf8');
                                 break;
 
+								case "mssqlnative":
+									static::$db_connection = ADONewConnection(static::DRIVER);
+									static::$db_connection->charSet = 'utf8';
+									static::$db_connection->PConnect($server, $user, $password, $database);
+								break;
+
                                 default:
                                         trigger_error("No se ha definido un método válido de conexión a la BD. Contacte con el administrador.", E_USER_ERROR);
                                 break;
