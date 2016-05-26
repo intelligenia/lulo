@@ -9,7 +9,7 @@ db_connect();
 
 function db_connect(){
     $db_settings = get_db_settings();
-    DB::connect($db_settings["server"], $db_settings["user"], $db_settings["password"], $db_settings["database"]);
+    lulo\db\DB::connect($db_settings["server"], $db_settings["user"], $db_settings["password"], $db_settings["database"]);
 }
 
 function load_local_configuration(){

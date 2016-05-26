@@ -16,7 +16,7 @@ require_once __DIR__."/rwmodel.class.php";
 abstract class LuloModel extends RWModel{
 	
 	/** Conexión usada */
-	const DB = "DB";
+	const DB = "\lulo\db\DB";
 	
 	/******************************************************************/
 	/******************************************************************/

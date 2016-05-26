@@ -19,7 +19,7 @@ abstract class ROModel{
     const ID_ATTRIBUTE_NAME = "id";
 	
 	/** Conexión usada */
-	const DB = "DB";
+	const DB = "\lulo\db\DB";
 	
 	
 	/** Nombre de la clase */

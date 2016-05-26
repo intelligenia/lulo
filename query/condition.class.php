@@ -212,17 +212,17 @@ class Condition{
 			// En el caso de que se trate de un operador contains o notcontains,
 			// el valor ha de estar envuelto por %
 			if($this->operator == "contains" or $this->operator == "notcontains"){
-				$sqlValue = \DB::qstr("%{$sqlValue}%");
+				$sqlValue = \lulo\db\DB::qstr("%{$sqlValue}%");
 			}
 			// En el caso de que se trate de un operador startswith
 			// el valor ha de estar precedido por %
 			if($this->operator == "startswith"){
-				$sqlValue = \DB::qstr("{$sqlValue}%");
+				$sqlValue = \lulo\db\DB::qstr("{$sqlValue}%");
 			}
 			// En el caso de que se trate de un operador endswith
 			// el valor ha de estar precedido por %
 			if($this->operator == "endswith"){
-				$sqlValue = \DB::qstr("%{$sqlValue}");
+				$sqlValue = \lulo\db\DB::qstr("%{$sqlValue}");
 			}
 			$escapedValue = "{$sqlValue} ESCAPE '".static::LIKE_ESCAPE_CHARACTER."'";
 		}
@@ -238,7 +238,7 @@ class Condition{
 			$escapedValue = "(";
 			$i=0;
 			foreach($this->value as $valueItem){
-				$escapedValue .= \DB::qstr(static::implicitSqlValueConversion($valueItem));
+				$escapedValue .= \lulo\db\DB::qstr(static::implicitSqlValueConversion($valueItem));
 				if($i < $numValues-1){
 					$escapedValue .= ", ";
 				}
@@ -254,14 +254,14 @@ class Condition{
 				throw new \InvalidArgumentException("El operador range requiere un array como valor con dos elementos");
 			}
 			// Extremos del intervalo
-			$item1 = \DB::qstr(static::implicitSqlValueConversion($this->value[0]));
-			$item2 = \DB::qstr(static::implicitSqlValueConversion($this->value[1]));
+			$item1 = \lulo\db\DB::qstr(static::implicitSqlValueConversion($this->value[0]));
+			$item2 = \lulo\db\DB::qstr(static::implicitSqlValueConversion($this->value[1]));
 			$escapedValue = "{$item1} AND {$item2}";
 		}
 		
 		// En el caso general, el escapado es normal
 		else{
-				$escapedValue = \DB::qstr($sqlValue);
+				$escapedValue = \lulo\db\DB::qstr($sqlValue);
 		}
 		
 		// Devolvemos el valor

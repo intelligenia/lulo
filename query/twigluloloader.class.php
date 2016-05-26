@@ -20,7 +20,7 @@ class TwigLuloLoader implements \Twig_LoaderInterface
      */	
 	public function getSource($name)
 	{
-		$db_engine = \DB::ENGINE;
+		$db_engine = \lulo\db\DB::ENGINE;
 		$file_path = __DIR__."/templates/$db_engine/$name";
 		if (file_exists($file_path)){
 			$final_path = $file_path;
