@@ -5,41 +5,47 @@ namespace lulo\models\traits;
 use lulo\containers\Collection as Collection;
 use lulo\containers\QuerySet as QuerySet;
 
+
+/**
+ * Legacy related loading objects methods.
+ * Use with caution and only in legacy applications.
+ *  */
 trait LoadRelated {
+	
+	
 	/**
-	 * Carga información de tablas asociadas pero sin basarse en modelos.
-	 * @param $relationName Nombre de la relación.
-	 * @param $remoteCondition Nombre de la condición de los objetos remotos.
-	 * @param $order Orden de los objetos remotos.
-	 * @param $limit Límite de los objetos remotos.
-	 * @return array Array simple si la relación es *ToOne, o array de arrays si es OneToMany.
+	 * Load information of the associated tables.
+	 * This method does not rely on models.
+	 * @param string $relationName Relationship name.
+	 * @param array $remoteCondition Array with the condition.
+	 * @param array $order Order of the remote objects. E. g. ["name" => "asc, "number" => "desc"]
+	 * @param array $limit Limit with the values [offset, size].
+	 * @return array Simple array if relatinoship is *ToOne, or array of arrays if relationship type is OneToMany.
 	 * */
-	protected static function _dbLoadRelatedNoModel($relationName, $remoteCondition=[], $order=null, $limit=null, $container="array"){
-		// Objeto DBHelper en un variable para poder llamar a
-		// su método estático de carga
+	protected static function _dbLoadRelatedNoModel($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryset"){
+		// Database
 		$db = static::DB;
 		
-		// Si vamos a cargar varias relaciones
+		// Get relationship properties
 		$relationship = static::metaGetRelationship($relationName);
 		
-		// Tipo de relación (ForignKey, OneToMany o ManyToMany)
+		// Relationship type (ForignKey, OneToMany o ManyToMany)
 		$relationshipType = $relationship["type"];
 		
-		// Tabla remota que se desea cargar
+		// Remote table
 		$relatedTable = $relationship["table"];
 		
-		// Tiene definidos ¿los campos que hemos de traernos?
+		// What fields should we get?
 		$columns = $relationship["attributes"];
 		$columnsStr = implode(",", $columns);
 		
-		// Indica si se ha de aplicar el modificador DISTINCT a la
-		// consulta de INNER JOIN final
+		// Should be DISTINCT applied to the query?
 		$isDistinct = (isset($relationship["distinct"]) and $relationship["distinct"]);
 		if($isDistinct){
 			$columnsStr = "DISTINCT {$columnsStr}";
 		}
 		
-		// Relación muchos a uno
+		// Many-to-One or One-to-One relationship 
 		if($relationshipType == "ManyToOne" or $relationshipType == "OneToOne"){
 			$row = $db::getRow($relatedTable, $columnsStr, $remoteCondition, $order);
 			if(count($row)==0 or $row==null or $row==false){
@@ -48,7 +54,7 @@ trait LoadRelated {
 			return $row;
 		}
 		
-		// Relación uno a muchos
+		// One-To-Many relationship
 		if($relationshipType == "OneToMany"){
 			if($container == "collection"){
 				return new Collection($db::getAll($relatedTable, $columnsStr, $remoteCondition, $order, $limit));
@@ -59,50 +65,47 @@ trait LoadRelated {
 			return $db::getAll($relatedTable, $columnsStr, $remoteCondition, $order, $limit);
 		}
 		
-		// No se aceptan relaciones de muchos a muchos
-		throw \InvalidArgumentException("Sólo se aceptan los tipos 'OneToMany' y 'ManyToOne' en las relaciones a tabla");
+		// Many-to-Many relationships are not allowed for relationships with tables
+		throw \InvalidArgumentException("When dealing with relationships with tables, only 'OneToMany' and 'ManyToOne' types are allowed");
 	}
 	
 	
 	/**
-	* Devuelve los objetos relacionado de la relación $relationName con el objeto actual según las relaciones definidas en esta clase.
-	* @param string $relationName Nombre de la relación.
-	* @param array $remoteCondition Condición extra de selección de objetos remotos. Si es null, no se aplica ninguna condición extra. Por defecto es null.
-	* @param array $order Orden que han de llevar. Array con pares <campo>=>"asc|desc". Por defecto es null.
-	* @param array|string $limit Límite de objetos que se devolverán. Por defecto es null.
-	* @param array $container Tipo de contenedor a usar en el caso de que la relación sea "a-muchos".
-	* @return array|collection|object Array, colección u objeto remoto.
+	* Return related objects of the relationship $relationName with current object.
+	* @param string $relationName Relationship name.
+	* @param array $remoteCondition Extra condition applied to remote objects. If null, it is ignored.
+	* @param array $order Order of the remote objects. E. g. ["name" => "asc, "number" => "desc"]
+	* @param array $limit Limit with the values [offset, size].
+	* @param array $container Container used for the result.
+	* @return array|collection|queryset Array, collection or queryset according to what is specified in $container parameter.
 	*/ 
-	protected function _dbLoadRelatedManyToMany($relationName, $remoteCondition=[], $order=null, $limit=null, $container="collection"){
-		// Si vamos a cargar varias relaciones
+	protected function _dbLoadRelatedManyToMany($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryset"){
+		// Relationship properties
 		$relationship = static::metaGetRelationship($relationName);
 		
-		// Modelo que hemos de cargar
+		// Remote model
 		$foreignClass = $relationship["model"];
 		
-		// Tablas de nexo
+		// Nexus tables
 		$junctionTables = $relationship["junctions"];
 		
-		// Indica si se ha de aplicar el modificador DISTINCT a la
-		// consulta de INNER JOIN final
+		// Should be DISTINCT applied to the query?
 		$isDistinct = (isset($relationship["distinct"]) and $relationship["distinct"]);
 		
-		// Las tablas son (en este orden): los nexos y la tabla destino
-		// La tabla destino se incluye sólo en los campos a seleccionar
-		// porque se presupone su presencia
+		// Tables are in this order: nexus and destination table
+		// Destination table is included only to select its fields
 		$tables = array_merge([], $junctionTables, [$foreignClass::getTableName()]);
 		$numTables = count($tables);
 		
-		// Para las tablas intermedias, sólo para las tablas nexo se incluyen
-		// los campos y sólo si así lo indica la relación
+		// Nexus table fields
 		$fieldsByTable = [];
 		$TABLE_NAME = static::getTableName();
 		foreach(array_merge([$TABLE_NAME],$tables) as $tableName){
 			$fieldsByTable[$tableName] = [];
 		}
 		
-		// Si hemos establecido que se incluyan los campos de las tablas nexo
-		// en la relación, incluimos los atributos del nexo
+		// Nexus table fields can be forced to be included in the relationship
+		// by setting this attributes to true
 		if(
 			(isset($relationship["include_junctions_attributes"]) and $relationship["include_junctions_attributes"]) or
 			(isset($relationship["include_nexus_attributes"]) and $relationship["include_nexus_attributes"]) or 
@@ -114,13 +117,13 @@ trait LoadRelated {
 				}
 		}
 		
-		// Los campos son todos los campos que no sean blob de la tabla de destino (última tabla)
+		// Selected fields are non-blob fields of remote table
 		$fieldsByTable[$foreignClass::getTableName()] = $foreignClass::metaGetSelectableAttributes();
 		
-		// Condiciones sobre la tabla original (0)
+		// Conditions for original table (0)
 		$localConditions = $this->getPk();
 		
-		// Condiciones entre cada tabla y la siguiente
+		// Conditions between original table and the next table
 		$conditions = $relationship["conditions"];
 		$relations = [];
 		$i = 0;
@@ -129,56 +132,58 @@ trait LoadRelated {
 			$i++;
 		}
 		
-		// Condición explícita
-		// Condiciones de los objetos remotos
+		// Explicit condition
+		// Condition applied to remote objects
 		if(is_array($remoteCondition)){
-			// Tenemos una condición compleja
+			// Complex condition
 			if(isset($remoteCondition["remoteObjectConditions"]) and isset($remoteCondition["nexiiConditions"])){
-				// Condiciones sobre los objetos remotos (objetos a cargar)
+				// Remote objects condition
 				$relations[$numTables-1]["extra"] = $remoteCondition["remoteObjectConditions"];
-				// Condiciones sobre cada uno de los nexos
+				// Nexii conditions
 				$i = 0;
 				foreach($remoteCondition["nexiiConditions"] as $nexusCondition){
 					$relations[$i]["extra"] = $nexusCondition;
 					$i++;
 				}
 			}
-			// La condición es básica, en el sentido de que es sólo para
-			// los destinatarios
+			// If the remote condition is only applied to remote objects
 			else if(!isset($remoteCondition["remoteObjectConditions"]) and !isset($remoteCondition["nexiiConditions"])){
 				$relations[$numTables-1]["extra"] = $remoteCondition;
 			}
 			else{
-				throw \Exception("Se esperaba ['remoteObjectConditions'=>[], 'nexiiConditions'=>[ [Condiciones Nexo1], [Condiciones Nexo2], ..., [Condiciones NexoN] ]]");
+				throw \Exception("['remoteObjectConditions'=>[], 'nexiiConditions'=>[ [Nexus1 conditions], [Nexus2 conditions], ..., [NexusN conditions] ]] where expected");
 			}
 		}
 		
-		/////////////////
-		// Parámetros extra sobre la consulta de INNER JOIN
+		// Extra INNER JOIN parameters
 		$params = [];
 		
-		// ¿Ha de comprobar unicidad de cada uno de los resultados?
+		// Should be DISTINCT applied to the query?
 		$params['distinct'] = $isDistinct;
 		
-		// Orden de los elementos remotos (no tiene sentido tener otro orden)
+		// Order of remote objects
 		$params['order'] = array();
 		if(!is_null($order)){
 			$params['order'][$foreignClass::getTableName()] = $order;
 		}
 		
-		// Límite de la consulta
+		// Query limit
 		$params['limit'] = $limit;
 		
-		//////////////////
-		// Consulta SQL a la base de datos
+		// Database to be queried
 		$db = static::DB;
 		
+		// If container is QuerySet it alone can create the container
+		// from the $db recordset
 		if($container=="queryset"){
 			return new QuerySet($db::joinAsRecordSet($fieldsByTable, $relations, $localConditions, $params), $foreignClass);
 		}
 		
+		
+		// Otherwise, all the objects are returned
 		$rows = $db::join($fieldsByTable, $relations, $localConditions, $params);
-		// Obtención de los objetos remotos
+		
+		// Getting the remote objects
 		$foreignObjects = $foreignClass::arrayFactoryFromRows($rows);
 		
 		if($container=="collection"){
@@ -190,132 +195,118 @@ trait LoadRelated {
 	
 	
 	/**
-	 * Obtiene la condición para una relación de clave externa.
-	 * @param array $relationship Propiedades de la relación.
-	 * @param array $expliticRemoteConditions Condiciones explícitas de los objetos remotos. Por defecto es un array vacío.
+	 * Get ForeignKey remote condition.
+	 * @param array $relationship Relationship properties.
+	 * @param array $expliticRemoteConditions Explicit remote object conditions.
+	 * @return array Array with the remote condition of the foreign key, based on my values.
 	 * */
 	protected function getForeignKeyRemoteCondition($relationship, $expliticRemoteConditions=[]){
-		/////////////
-		// Para el caso de que no sea una relación muchos a muchos, 
-		// no necesitamos una table NEXO.
-		/////////////
-		// Condición de carga del objeto, inicialmente tiene la condición
+		// Remote condition based on foreign key link
 		$remoteCondition = [];
 		$foreignCondition = $relationship["condition"];
 		foreach($foreignCondition as $localAttribute=>$remoteAttribute){
 			$remoteCondition[$remoteAttribute] = $this->getAttribute($localAttribute);
 		}
-		// Añadimos las condiciones explícitas sobre los objetos remotos
-		// que le pasamos como parámetro
+		// Addition of remote conditions
 		if(is_array($expliticRemoteConditions) and count($expliticRemoteConditions)>0){
 			foreach($expliticRemoteConditions as $attr=>$value){
 				$remoteCondition[$attr] = $value;
 			}
 		}
-		// Devolvemos la condición sobre los objetos remotos
+		// Final remote condition
 		return $remoteCondition;
 	}
 	
 	
 	/**
-	* Devuelve el objeto relacionado de la relación $relationName con el objeto actual según las relaciones definidas en esta clase.
-	* @param string $relationName Nombre de la relación.
-	* @param array $remoteCondition Condición extra de selección de objetos remotos. Si es [], no se aplica ninguna condición extra. Por defecto es [].
-	* @param array $order Orden que han de llevar. Array con pares <campo>=>"asc|desc". Por defecto es null.
-	* @param array|string $limit Límite de objetos que se devolverán. Por defecto es null.
-	* @param array $container Tipo de contenedor a usar en el caso de que la relación sea "a-muchos".
-	* @return array|collection|object Array, colección u objeto remoto relacionado con el objeto llamador.
+	* Return related object defined by relationship $relationName.
+	* @deprecated You should be using Lulo Queries instead this method.
+	* @param array $remoteCondition Extra condition applied to remote objects. If null, it is ignored.
+	* @param array $order Order of the remote objects. E. g. ["name" => "asc, "number" => "desc"]
+	* @param array $limit Limit with the values [offset, size].
+	* @param array $container Container used for the result.
+	* @return array|collection|queryset Array, collection or queryset according to what is specified in $container parameter.
 	*/ 
-	public function dbLoadRelated($relationName, $remoteCondition=[], $order=null, $limit=null, $container="collection"){
-		// Relación definida en __CLASS__
+	public function dbLoadRelated($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryset"){
+		// Relationship $relationName must exist in this model
 		if(!isset(static::$RELATIONSHIPS[$relationName])){
-			throw new UnexpectedValueException("La relación {$relationName} no existe en el modelo ".static::CLASS_NAME);
+			throw new \UnexpectedValueException("Relationship {$relationName} does not exist in model ".static::CLASS_NAME);
 		}
 		$relationship = static::$RELATIONSHIPS[$relationName];
 		
-		// Modelo que hemos de cargar
+		// Remote model
 		$foreignClass = $relationship["model"];
 		
-		// Si no hay un modelo que cargar, lo creamos nosotros WOW
+		// If relationship is between this object and a table
+		// returned data will be array, collection or queryset
 		if(is_null($foreignClass)){
 			if(isset($relationship["table"])){
 				return static::_dbLoadRelatedNoModel($relationName, $remoteCondition, $order, $limit, $container);
 			}
-			throw new UnexpectedValueException("Falta la clave 'table' con el nombre de la tabla");
+			throw new \UnexpectedValueException("Relationship {$relationName} does not have 'table' key");
 		}
 		
-		// Tipo de relación (ForignKey, OneToMany o ManyToMany)
+		// Relationshihp type (ForeignKey, OneToMany or ManyToMany)
 		$relationshipType = $relationship["type"];
 		
-		//////////////
-		/// 1. ManyToMany: el objeto actual tiene muchas referencias con
-		/// otros objetos y usa para ello una tabla intermedia
+		/// 1. ManyToMany: current object has many refernces with other objects
+		/// and uses (at least) one intermediate table
 		if($relationshipType == "ManyToMany"){
 			$remoteObjects = static::_dbLoadRelatedManyToMany($relationName, $remoteCondition, $order, $limit, $container);
 			return $remoteObjects;
 		}
 		
-		/////////////
-		// Para el caso de que no sea una relación muchos a muchos, 
-		// no necesitamos una table NEXO.
-		$remoteCondition = $this->getForeignKeyRemoteCondition($relationship, $remoteCondition);
+		// Remote condition
+		$toOneCondition = $this->getForeignKeyRemoteCondition($relationship, $remoteCondition);
 		
-		//////////////
-		/// 2. ForeignKey (ManyToOne): el objeto actual tiene
-		/// una única referencia externa.
+		/// 2. ForeignKey (ManyToOne): current object has only one reference.
 		if($relationshipType=="ForeignKey" or $relationshipType=="ManyToOne" or $relationshipType=="OneToOne"){
-			return $foreignClass::dbLoad($remoteCondition);
+			return $foreignClass::dbLoad($toOneCondition);
 		}
 		
-		//////////////
-		/// 3. OneToMany: el objeto actual es una referencia externa
-		/// del objeto remoto.
+		/// 3. OneToMany: current object is an external reference of the remote object
 		if($relationshipType=="OneToMany"){
 			$container = strtolower($container);
 			$remoteObjects = $foreignClass::dbLoadAll($remoteCondition, $order, $limit, $container);
 			return $remoteObjects;
 		}
 		
-		// Por si hemos introducido una relación que no está implementada
-		throw \UnexpectedValueException("El tipo de relación {$relationshipType} no está implementado");
+		// Not implemente type of relationship
+		throw \UnexpectedValueException("{$relationshipType} relationship type is not implemented");
 	}
 	
 	
 	/**
-	 * Informa si el objeto actual tiene una relación con el objeto remoto.
-	 * @param string $relationName Nombre de la relación.
-	 * @param object $object Objeto con el que queremos comprobar si hay relación.
-	 * @return boolean True si hay relación entre $this y $object via $relationName, false en otro caso.
+	 * Informs if a relationships exists between current object and an object.
+	 * @param string $relationName Relationship to test.
+	 * @param object $object Object to test if there is a relationships.
+	 * @return boolean true if $this and $object are related via $relationName. False otherwise.
 	 * */
 	public function dbHasRelation($relationName, $object){
-		// Para facilitar las cosas y no tener que ir
-		// arrastrando static::$RELATIONSHIPS
+		// Relationship properties
 		$relationship = static::$RELATIONSHIPS[$relationName];
 		
-		// Tipo de relación (ForignKey, OneToMany o ManyToMany)
+		// Relationship type (ForignKey, OneToMany or ManyToMany)
 		$relationshipType = $relationship["type"];
 		
-		////////////////////////////////////////////////////////////////
-		// Relación muchos a muchos
+		// Many-to-Many relationship
 		if($relationshipType == "ManyToMany"){
 			$remoteCondition = $object->getPk();
 			return ( count(static::_dbLoadRelatedManyToMany($relationName, $remoteCondition))>0 );
 		}
 		
-		////////////////////////////////////////////////////////////////
-		// Clave externa
+		// Foreign key relationship
 		if($relationshipType == "ForeignKey" or $relationshipType == "ManyToOne"){
-			// Modelo remoto (el otro extremo de la relación)
+			// Remote model
 			$foreignModel = $relationship["model"];
-			/////////////
-			// Para el caso de que no sea una relación muchos a muchos, 
-			// no necesitamos una table NEXO.
+			// Remote condition
 			$remoteCondition = $object->getPk();
+			// Count of remote objects
 			$foreignKeyCondition = static::getForeignKeyRemoteCondition($relationship, $remoteCondition);
 			return ( $foreignModel::dbCount($foreignKeyCondition) > 0 );
 		}
 		
-		// Por si hemos introducido una relación que no existe
-		throw new \UnexpectedValueException("La relación {$relationName} no existe");
+		// Warn that relationship does not exist
+		throw new \UnexpectedValueException("Relationship {$relationName} does not exist");
 	}
 }
