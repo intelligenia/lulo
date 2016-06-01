@@ -1,9 +1,8 @@
 <?php
 
 /**
- * Cada una de las fotografías del usuario.
- * Clase de ejemplo para ilustrar cómo usar los modelos de Lulo.
- * @author Diego J. Romero López en intelligenia.
+ * Each one of the photographs of an user in a social-network-like website.
+ * @author Diego J. Romero López at intelligenia.
  * */
 class Photo extends \lulo\models\LuloModel{
 	/******************************************************************/
@@ -76,29 +75,7 @@ class Photo extends \lulo\models\LuloModel{
 	/**
 	 * Relaciones del modelo Tag
 	 * */
-	protected static $RELATIONSHIPS = [
-		////////////////////////////////////////////////////////////////
-		// Relación con User
-		/*"user" => [
-			"type" => "ForeignKey",
-			"model" => "User",
-			// Nombre legible de la relación
-			"verbose_name" => "Propietario de la foto",
-			// Nombre de la relación inversa
-			"related_name" => "photos",
-			// Nombre legible de la relación inversa (opcional)
-			"related_verbose_name" => "Fotografías del usuario",
-			// Atributos relacionados
-			"condition" => ["user_id"=>"id"],
-			// Nullable indica que permite el valor "ninguno"
-			"nullable" => false,
-			// Una relación readonly sólo permite consulta
-			"readonly" => false,
-			// Indica qué ocurre cuando se elimina el objeto padre
-			// Se han de eliminar las fotos en cascada
-			"on_master_deletion" => "delete"
-		]*/
-	];
+	protected static $RELATIONSHIPS = [];
 
 	/************* FIN DE ATRIBUTOS QUE SE SOBRESCRIBREN **************/
 	/******************************************************************/

@@ -16,7 +16,7 @@ require_once __DIR__."/rwmodel.class.php";
 abstract class LuloModel extends RWModel{
 	
 	/** Conexión usada */
-	const DB = "DB";
+	const DB = "\lulo\db\DB";
 	
 	/******************************************************************/
 	/******************************************************************/
@@ -35,7 +35,6 @@ abstract class LuloModel extends RWModel{
 	 * @return boolean True si la actualización ha sido un éxito.
 	 * */
 	public function dbBlobUpdate($blobName, $blob){
-		$condition = $this->getPk();
 		
 		// 1. Si es un array y tiene la clave dbblobreader y ésta no es null
 		// lo asignamos a al blob y asumimos que es un objeto de tipo DBBlobReader

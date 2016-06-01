@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * Autoloader for test classes.
+ */
+
 spl_autoload_register("load_test_models");
 
 function load_test_models($class_name){

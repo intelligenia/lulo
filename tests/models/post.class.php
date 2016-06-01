@@ -2,12 +2,7 @@
 
 /**
  * Clase de usuario de ejemplo.
- * La herencia es la siguiente:
- * - TranslatableModel: vamos a usar la interfaz de traducción
- * - Model: vamos a usar lectura y escritura de la BD de UniWeb/IntelliWeb
- * - RWModel: vamos a usar lectura y escritura de la BD del CSIRC (u otra BD con un DBHelper específico)
- * - ROModel: vamos a usar sólo lectura de una BD que use un DBHelper específico.
- * @author Diego J. Romero López en intelligenia.
+ * @author Diego J. Romero López at intelligenia.
  * */
 class Post extends \lulo\models\LuloModel{
 
@@ -172,7 +167,7 @@ class Post extends \lulo\models\LuloModel{
 	public static function cleanCreation($data){
 		$data = parent::cleanCreation($data);
 		$data["stack"] = TEST_STACK;
-		$data["title_slug"] = \DB::dbMakeUniqueLargeSlug($data["title"], 64, static::TABLE_NAME, "title");
+		$data["title_slug"] = \DB::dbMakeUniqueLargeSlug($data["title"], 64, static::getTableName(), "title");
 		$now = (new \DateTime())->format('Y-m-d H:i:s');
 		$data["creation_datetime"] = $now;
 		$data["last_update_datetime"] = $now;

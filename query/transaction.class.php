@@ -3,42 +3,45 @@
 namespace lulo\query;
 
 /**
- * Transacción.
+ * SQL transaction helper.
+ * Work in progress. Please, contribute!
  *  */
 class Transaction{
 	
-	/** DBHelper que se va a usar para realizar las transacciones */
-	const DBHELPER = "DBHelper";
+	/** DB connection to use in as a DB translation layer */
+	const DB = "\lulo\db\DB";
 	
 	
 	/**
-	 * Construye la transacción.
+	 * Creates the transaction.
 	 */
 	protected function __construct(){
 	}
 
 	
 	/**
-	 * Inicia la transacción.
+	 * Starts the transaction.
+	 * Executes START TRANSACTION statement.
 	 */
 	protected function start(){
-		$db = static::DBHELPER;
+		$db = static::DB;
 		$db::execute("START TRANSACTION");
 	}
 	
 	
 	/**
-	 * Finaliza la transacción.
+	 * Ends the transaction.
+	 * Executes COMMIT statement.
 	 */
 	protected function end(){
-		$db = static::DBHELPER;
+		$db = static::DB;
 		$db::execute("COMMIT");
 	}
 
 	
 	/**
-	 * Factoría que crea una nueva transacción.
-	 * @param lambda $function Función que se va a ejecutar en una transacción.
+	 * Creates a new transaction.
+	 * @param function $function Function to wrap in the transaction.
 	 */
 	public static function n($function){
 		$transaction = new Transaction();

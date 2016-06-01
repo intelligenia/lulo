@@ -1,10 +1,10 @@
-{% extends "query.twig.sql" %}
+{% extends "select/query.twig.sql" %}
 
 
 {% block select %}
   DELETE main_table.*
   
-  {# Incluimos los alias de todas las tablas hijas que tengan como ForeignKey a este modelo (y que tengan eliminación en cascada) #}
+  {# Every child table that has the main table as a foreign key must be included with an alias. These tables will be deleted if have delete on cascade. #}
   {% for relationship in query.relationships if relationship["attributes"]["type"]=="OneToMany" %}
     ,
     {% for src_attr,dest_attr in relationship["attributes"]["condition"] %}
@@ -12,7 +12,7 @@
     {% endfor %}
   {% endfor %}
   
-  {# Incluimos todas las tablas nexo de relaciones ManyToMany que tengan como extremo a este modelo (y que tengan eliminación en cascada) #}
+  {# Nexus tables of the Many-to-many relationships of the main table (with cascade deletion). #}
   {% for relationship in query.relationships if relationship["attributes"]["type"]=="ManyToMany" %}
     ,
     {% for junction in relationship["attributes"]["junctions"] %}
@@ -30,7 +30,7 @@
 
 {% block join %}
 
-  {# Relación con las tablas hijas. Estas tuplas de tablas hijas se eliminarán también #}
+  {# Relationship with children tables. This tuples in children tables will also be deleted #}
   {% for relationship in query.relationships if relationship["attributes"]["type"]=="OneToMany" %}
     LEFT OUTER JOIN {{relationship["table"]}} AS {{relationship["name"]}} ON (
     {% for src_attr,dest_attr in relationship["attributes"]["condition"] %}
@@ -40,9 +40,9 @@
   )
   {% endfor %}
   
-  {# Relación con las tablas nexo de relaciones ManyToMany. Estas tuplas e tablas hijas se eliminarán también #}
+  {# Many-to-many relationship with nexus tables. These tables will also be deleted. #}
   {% for relationship in query.relationships if relationship["attributes"]["type"]=="ManyToMany" %}
-      {% include "join_with_many_to_many.twig.sql" %}
+      {% include "select/join_with_many_to_many.twig.sql" %}
   {% endfor %}
   
 {% endblock %}
@@ -53,7 +53,7 @@
 {% endblock where %}
 
 
-{# Bloques vacíos #}
+{# Empty blocks #}
 {% block group_by %}
 {% endblock group_by %}
 

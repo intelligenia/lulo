@@ -575,13 +575,10 @@ class Collection implements \Countable, \Iterator, \ArrayAccess
 		// Si el índice es negativo, devolvemos el elemento $this->count+$index
 		if($index<0)	$index = ($this->count+$index);
 		// Si estamos dentro de los límites
-		if($index < $this->count)
+		if($index < $this->count){
 			return $this->positionIndex[$index];
-		// Si estamos fuera de los límites lanzamos una excepción y un aviso al usuario
-		$message = "Collection: $index ".tlt("se encuentra fuera de los límites del array");
-		throw new Exception($message);
-		trigger_error($message, E_USER_WARNING);
-		return null;
+		}
+		throw new \Exception("{$index} is out of Collection limits");
 	}
 	/**
 	* Devuelve una colección con una partición de la colección actual.

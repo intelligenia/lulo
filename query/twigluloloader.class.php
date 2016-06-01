@@ -3,14 +3,14 @@
 namespace lulo\query;
 
 /**
- * Cargador específico de plantillas Twig para intelliweb
+ * Twig template loader for Lulo.
  * */
 class TwigLuloLoader implements \Twig_LoaderInterface
 {
-	/** Bandera de depuración */
+	/** Should we debug? */
 	public $debug = false;
 
-	/** Ruta de la plantilla Twig */
+	/** Complete path of the found twig file */
 	public $path = null;
 
     /**
@@ -20,16 +20,32 @@ class TwigLuloLoader implements \Twig_LoaderInterface
      */	
 	public function getSource($name)
 	{
-		$db_engine = \DB::ENGINE;
+		// If we have specified a raw_path in templates, gets the raw path
+		$matches = [];
+		if(preg_match("/^(!raw_path:)(.+)$/", $name, $matches)){
+			$final_path = __DIR__."/templates/_default/{$matches[2]}";
+			if(!file_exists($final_path)){
+				throw new \InvalidArgumentException("Path {$final_path} does not exist");
+			}
+			return $final_path;
+		}
+		// Load the SQL file for our DB engine
+		$db_engine = \lulo\db\DB::ENGINE;
+		
+		// First path to try is the specific SQL templates for this DB engine
 		$file_path = __DIR__."/templates/$db_engine/$name";
 		if (file_exists($file_path)){
 			$final_path = $file_path;
+		
+		// Second path to try is the default SQL templates for all DB engines
+		// that respect the standard
 		}else if(file_exists(__DIR__."/templates/_default/$name")){
 			$final_path = __DIR__."/templates/_default/$name";
 		}else{
-			throw new \InvalidArgumentException("$name twig template does not exists");
+			throw new \InvalidArgumentException("$name twig template does not exists ({$final_path} tested)");
 		}
 		
+		// Load of the Twig template as a string
 		$twigString = file_get_contents($final_path);
 		if(is_string($twigString))
 		{

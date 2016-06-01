@@ -3,75 +3,80 @@
 namespace lulo\query;
 
 /**
- * Clase que contiene cada una de las condiciones establecidas por el usuario.
+ * Contains each one of the conditions for one field specified by the user.
+ * 
+ * That is, for example, each one of these:
+ * - name="James"
+ * - height >= 180
+ * - surname like '%-Mesa'
+ * 
  *  */
 class Condition{
 	
-	/** Entidad de la que depende esta condición, Contacto, Apunte, etc. */
+	/** Condition group this condition belongs to */
 	protected $conditionConjunction;
 	
-	/** Modelo sobre el que se ejecuta la condición */
+	/** Model condition field belongs tod */
 	protected $model;
 	
-	/** Tabla sobre la que se ejecuta la condición */
+	/** Model table */
 	public $table;
 	
-	/** Alias de la tabla sobre la que se ejecuta la condición */
+	/** Table alias */
 	public $table_alias;
 	
-	/** Campo de la condición cuyo SQL se quiere generar */
+	/** Field name */
 	protected $field;
 	
-	/** Operador de comparación que se le va a aplicar */
+	/** Operation to apply to field $field */
 	protected $operator;
 	
-	/** Valor que se va a comparar con el campo */
+	/** Value which this field compare to */
 	protected $value;
 
-	/** Carácter de escape de las condicones LIKE */
+	/** Character used to escape in LIKE operator */
 	const LIKE_ESCAPE_CHARACTER = "|";
 	
 	/**************************************************************************/
 	
 	/**
-	 * Constructor de la clase Condition.
+	 * Condition constructor.
 	 * 
-	 * @param object $conditionConjunction Conjunción de condiciones padre de la que depende esta condición.
-	 * @param string $field Campo sobre el que se va ejecutar la condición.
-	 * @param string $value Valor de la condición.
+	 * @param object $conditionConjunction Parent condition conjuntion.
+	 * @param string $field Field to apply condition.
+	 * @param string $value Value to apply operation.
 	 */
 	public function __construct($conditionConjunction, $field, $value) {
 		$this->conditionConjunction = $conditionConjunction;
 		$model = $conditionConjunction->luloquery->model;
 		$matches = [];
 		
-		// Si el campo es una referencia externa
+		// if field is an extern field
 		if(strpos($field, "::")!==false and preg_match("#^(.+)::(.+)$#", $field, $matches)>0){
-			// Obtenemos el modelo relacionado a partir del nombre
-			// de la relación
+			// Getting the related model and the relation
 			$relationshipName = $matches[1];
 			$relationship = $model::metaGetRelationship($relationshipName);
 			$relatedModel = $relationship["model"];
 			$this->model = $relatedModel;
-			$this->table = $relatedModel::TABLE_NAME;
+			$this->table = $relatedModel::getTableName();
 			$this->table_alias = $relationshipName;
 			$this->field = $matches[2];
-			// Le añadimos la relación con el modelo
+			// Adding to relations that will be used in the query
 			$conditionConjunction->luloquery->addRelatedModel($relationshipName);
 			$this->operator = "=";
 		
-		// El campo es local al modelo, por lo que es una condición normal
+		// Local field
 		}else{
 			$this->model = $model;
-			$this->table = $model::TABLE_NAME;
+			$this->table = $model::getTableName();
 			$this->table_alias = "main_table";
 			$this->field = $field;
 			$this->operator = "=";
 		}
 		$this->value = $value;
-		// En el caso de que el campo final tenga la subcadena __
-		// entonces estamos ante un operador especial y hemos de cambiar
-		// el campo y el operador
+
+		// If field has __ as suffix we have a special operator, so
+		// we need to adjust field name and operator
 		if(strpos($this->field, "__")!==false){
 			list($field, $operator) = explode("__", $this->field);
 			$this->field = $field;
@@ -81,9 +86,9 @@ class Condition{
 	
 	
 	/**
-	 * Obtiene el modelo al que pertenece la condición.
+	 * Get condition model.
 	 * 
-	 * @return string Cadena con el nombre del modelo al que pertenece esta condición.
+	 * @return string String with model name used in this condition.
 	 */
 	public function getModel(){
 		return $this->model;
@@ -91,8 +96,8 @@ class Condition{
 
 	
 	/**
-	 * Obtiene el SQL del operador.
-	 * @return string Operador la operación de comparación que se usará en la consulta.
+	 * Gets the SQL code of the operation.
+	 * @return string SQL representation of the operation.
 	 */
 	protected function getSqlOperator(){
 		if(is_null($this->value)){
@@ -134,13 +139,13 @@ class Condition{
 		if($this->operator == "gte"){
 			return ">=";
 		}
-		throw new \UnexpectedValueException("El operator {$this->operator} no se reconoce");
+		throw new \UnexpectedValueException("Operator {$this->operator} is not recognized");
 	}
 	
 	
 	/**
-	 * Obtiene el campo preparado para insertar en el SQL.
-	 * @return string Nombre del campo de la operación de comparación que se usará en la consulta.
+	 * Get the field name.
+	 * @return string Field name prepared to be used in the query.
 	 */
 	protected function getSqlField(){
 		return $this->field;
@@ -148,9 +153,11 @@ class Condition{
 	
 	
 	/**
-	 * Obtiene el valor sql para el caso de que sea un Like.
-	 * @param $sqlValue Valor a escapar. Antes de envolverlo entre los símbolos de %.
-	 * @return Valor con los % y _ escapados.
+	 * Get SQL-escaped value for LIKE operation.
+	 * Remember we have defined a escape character in this class.
+	 * 
+	 * @param $sqlValue Value that will be escaped. Before wrapping it in % symbols.
+	 * @return string Value with % and _ escaped.
 	 */
 	protected static function getSqlValueForLike($sqlValue){
 		$e = static::LIKE_ESCAPE_CHARACTER;
@@ -159,29 +166,27 @@ class Condition{
 	}
 	
 	/**
-	 * Realiza conversiones implícitas de un campo para generar la consulta
-	 * correctamente.
+	 * Make implicit conversions for a field before making the query.
 	 * 
-	 * @return string $sqlValue Valor que se ha de convertir a cadena.
+	 * @return string $sqlValue Converted value.
 	 * */
 	protected static function implicitSqlValueConversion($sqlValue){
-		/////// Conversiones básicas del valor del campo
-		// Si el campo es un objeto establecemos otras conversiones
+		// If the value is an object, we try to convert according to its class
 		if(is_object($sqlValue)){
 			$sqlValueClass = get_class($sqlValue);
 			
-			// Si es de tipo DateTime, se convierte a una cadena
-			// con la fecha en formato MySQL
+			// If the value is a DateTime, it is converted
+			// to YYYY-MM-DD HH:II:SS format.
 			if($sqlValueClass == "DateTime"){
 				$sqlValue = $sqlValue->format("Y-m-d H:i:s");
 			}
 			
-			// Si tiene el atributo id devolvemos el id
+			// If it has id attribute, return it
 			elseif(isset($sqlValue->id)){
 				$sqlValue = $sqlValue->id;
 			}
 			
-			// Si tiene el método getStrPk devolvemos getStrPk
+			// // If it has a method that returns the primary key
 			elseif(method_exists($sqlValue, "getStrPk")){
 				$sqlValue = $sqlValue->getStrPk();
 			}
@@ -191,54 +196,47 @@ class Condition{
 	
 	
 	/**
-	 * Obtiene el valor preparado para insertar en el SQL.
+	 * Return the SQL representation of the value.
 	 * 
-	 * @return string Valor de la operación de comparación que se usará en la consulta.
+	 * @return string Value that will be used in the condition.
 	 */
 	protected function getSqlValue(){
-		// Si el operador es de tipo LIKE, tenemos que introducir % delante
-		// y detrás del valor
-		$sqlValue = $this->value;
-		
-		// Conversiones implícitas según la naturaleza del valor
-		$sqlValue = static::implicitSqlValueConversion($sqlValue);
+		// Implicit conversions according to type of value
+		$sqlValue = static::implicitSqlValueConversion($this->value);
 
-		/////// Conversiones según los operadores
-		// Operadores que usan el LIKE
+		////// Value conversions according to operator
+		// Conversions for LIKE
 		if($this->operator == "contains" or $this->operator == "notcontains" or
 			$this->operator == "startswith" or $this->operator == "endswith"){
 			$sqlValue = static::getSqlValueForLike($sqlValue);
 			
-			// En el caso de que se trate de un operador contains o notcontains,
-			// el valor ha de estar envuelto por %
+			// Must be wrapped by % if operator is contains
 			if($this->operator == "contains" or $this->operator == "notcontains"){
-				$sqlValue = \DB::qstr("%{$sqlValue}%");
+				$sqlValue = \lulo\db\DB::qstr("%{$sqlValue}%");
 			}
-			// En el caso de que se trate de un operador startswith
-			// el valor ha de estar precedido por %
-			if($this->operator == "startswith"){
-				$sqlValue = \DB::qstr("{$sqlValue}%");
+			// Must have % as suffix if operator is starswith
+			elseif($this->operator == "startswith"){
+				$sqlValue = \lulo\db\DB::qstr("{$sqlValue}%");
 			}
-			// En el caso de que se trate de un operador endswith
-			// el valor ha de estar precedido por %
-			if($this->operator == "endswith"){
-				$sqlValue = \DB::qstr("%{$sqlValue}");
+			// Must have % as prefix if operator is endswith
+			elseif($this->operator == "endswith"){
+				$sqlValue = \lulo\db\DB::qstr("%{$sqlValue}");
 			}
 			$escapedValue = "{$sqlValue} ESCAPE '".static::LIKE_ESCAPE_CHARACTER."'";
 		}
 		
-		// Operador IN
+		// Conversions for IN
 		elseif($this->operator == "in"){
-			// Comprobación básica
+			// Testing if the value is an array
 			if(!is_array($this->value)){
-				throw new \InvalidArgumentException("El operador in requiere un array como valor");
+				throw new \InvalidArgumentException("Operator IN requires the value to be an array");
 			}
-			// Generamos una string con la forma: IN (item1, item2, ..., itemN)
+			// Creation of a string like IN (item1, item2, ..., itemN)
 			$numValues = count($this->value);
 			$escapedValue = "(";
 			$i=0;
 			foreach($this->value as $valueItem){
-				$escapedValue .= \DB::qstr(static::implicitSqlValueConversion($valueItem));
+				$escapedValue .= \lulo\db\DB::qstr(static::implicitSqlValueConversion($valueItem));
 				if($i < $numValues-1){
 					$escapedValue .= ", ";
 				}
@@ -247,21 +245,21 @@ class Condition{
 			$escapedValue .= ")";
 		}
 		
-		// Operador range
+		// Conversions for RANGE
 		elseif($this->operator == "range"){
-			// Comprobación básica
+			// An range is composed by two values
 			if(!is_array($this->value) or count($this->value)!=2){
-				throw new \InvalidArgumentException("El operador range requiere un array como valor con dos elementos");
+				throw new \InvalidArgumentException("RANGE operator needs a pair of elements");
 			}
-			// Extremos del intervalo
-			$item1 = \DB::qstr(static::implicitSqlValueConversion($this->value[0]));
-			$item2 = \DB::qstr(static::implicitSqlValueConversion($this->value[1]));
+			// Interval limits
+			$item1 = \lulo\db\DB::qstr(static::implicitSqlValueConversion($this->value[0]));
+			$item2 = \lulo\db\DB::qstr(static::implicitSqlValueConversion($this->value[1]));
 			$escapedValue = "{$item1} AND {$item2}";
 		}
 		
-		// En el caso general, el escapado es normal
+		// General case, must be escaped as usual
 		else{
-				$escapedValue = \DB::qstr($sqlValue);
+			$escapedValue = \lulo\db\DB::qstr($sqlValue);
 		}
 		
 		// Devolvemos el valor
@@ -270,13 +268,11 @@ class Condition{
 	
 	
 	/**
-	 * Obtiene el SQL de la condición.
+	 * Get SQL code for this condition.
 	 * 
-	 * @return string Cadena con la condición SQL sobre la tabla "contacto".
+	 * @return string String that contains the SQL code for this condition.
 	 */
 	public function sql(){
-		// Si no tiene correspondencia especial,
-		// simplemente hemos de construir la condición
 		$field = $this->getSqlField();
 		$sqlOperator = $this->getSqlOperator();
 		$sqlValue = $this->getSqlValue();

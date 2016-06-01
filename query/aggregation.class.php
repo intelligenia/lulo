@@ -3,25 +3,25 @@
 namespace lulo\query;
 
 /**
- * Representa una agregación en una consulta a la BD.
+ * Represents one database aggregation in a query.
  *  */
 class Aggregation{
 	
-	/** Nombre de la función de agregación a aplicar */
+	/** Aggregate function name */
 	public $functionName;
 	
-	/** Alias que le metemos al resultado de la agregación */
+	/** Aggregation result alias */
 	public $alias;
 	
-	/** Campos implicados en la agregación */
+	/** Fields that have a role in this aggregation */
 	public $fields;
 	
-	/** Modelo que sufre la consulta */
+	/** Main model */
 	public $model;
 	
 	
 	/**
-	 * Nombres que se permiten para las funciones de agregación.
+	 * Available aggregate functions.
 	 * 	 */
 	protected static $AGGREGATE_FUNCTION_NAMES = [
 		"AVG", "COUNT", "MAX", "MIN", "STD", "STDDEV", "SUM", "VARIANCE"
@@ -29,18 +29,19 @@ class Aggregation{
 	
 	
 	/**
-	 * Construye una nueva agregación.
+	 * Creates a new aggregation.
 	 * 
-	 * @param string $functionName Nombre de la función de agregación.
-	 * @param string $alias Alias que le meteremos a la función de agregación en la consulta.
-	 * @param array Array con los nombres de los campos que van a sufrir la agregación.
+	 * @param string $functionName Aggregation function name.
+	 * @param string $alias Alias for the result of this aggregration.
+	 * @param array Field names that will suffer the aggregation. If null, all fields are aggregated.
 	 * 	 */
 	public function __construct($functionName, $alias, $fields=null) {
-		// Comprobación de que las funciones de agregación son válidas
+		// Is the aggregation function one of the available aggregation functions?
 		if(!in_array(strtoupper($functionName), static::$AGGREGATE_FUNCTION_NAMES)){
-			throw new \Exception("La función {$functionName} no es un nombre de agregación correcto");
+			throw new \Exception("Aggregation function {$functionName} is not right or is not available at the moment");
 		}
-		// Comprobamos si se han pasado los campos correctamente
+		// Fields must be a list of fields or null, if fields are null it will
+		// we regarded as all fields.
 		if(!is_array($fields) and !is_null($fields)){
 			throw new \Exception("No le has pasado campos a la función de agregación {$functionName}");
 		}
@@ -52,18 +53,17 @@ class Aggregation{
 	
 	
 	/**
-	 * Indicamos a la agregación el modelo sobre el que se va a ejecutar.
+	 * Aggregation needs to know what model must be aggregated.
 	 * 
-	 * @param string $model Nombre del modelo que se va a ejecutar.
-	 * 
+	 * @param string $model Model name to use.
 	 * 	 */
 	public function init($model){
 		$this->model = $model;
-		// Comprobamos que los campos sean atributos del modelo
+		// Test if aggregated fields belongs to this model
 		if(is_array($this->fields)){
 			foreach($this->fields as $field){
 				if(!$model::metaHasAttribute($field)){
-					throw new \Exception("{$field} no es un atributo del modelo {$model}");	
+					throw new \Exception("{$field} is not an attribute of model {$model}");	
 				}
 			}
 		}

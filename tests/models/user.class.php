@@ -1,13 +1,8 @@
 <?php
 
 /**
- * Clase de usuario de ejemplo.
- * Clase de ejemplo para ilustrar cómo usar los modelos de Lulo.
- * La herencia es la siguiente:
- * - Model: vamos a usar lectura y escritura de la BD de UniWeb/IntelliWeb
- * - RWModel: vamos a usar lectura y escritura de la BD del CSIRC (u otra BD con un DBHelper específico)
- * - ROModelo: vamos a usar sólo lectura de una BD que use un DBHelper específico.
- * @author Diego J. Romero López en intelligenia.
+ * Example user class for a social-network-like system.
+ * @author Diego J. Romero López at intelligenia.
  * */
 class User extends \lulo\models\LuloModel{
 	

@@ -3,9 +3,10 @@
 namespace lulo\query;
 
 /**
- * Proposición
+ * Logic proposition.
+ * Useful for creating complex conditions.
  * 
- * NO USAR AÚN, en desarrollo.
+ * DO NOT USE, currently under development.
  */
 
 class Proposition{

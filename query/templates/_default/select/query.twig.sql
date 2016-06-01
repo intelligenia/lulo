@@ -1,6 +1,6 @@
-{% import "selected_fields.twig.sql" as q %}
+{% import "select/selected_fields.twig.sql" as q %}
 
-{# Inicio de transacción #}
+{# Start transaction #}
 {% block start_transaction %}
 	{% if query.is_transaction %}
 		START TRANSACTION
@@ -12,11 +12,11 @@
 	SELECT
 	{% block selected_fields %}
 		
-		{# Campos normales #}
+		{# Standard fields #}
 		{% if query.selected_fields and query.selected_fields|length > 0 %}
 			{{q.selected_fields(query, "main_table")}}{% if query.aggregations|length > 0 %},{% endif %}
 		{% elseif query.aggregations|length > 0 %}
-			{# Si no se le han pasado campos, es una consulta de agregación #}
+			{# If there were no fields in the query is an aggregation query #}
 		{% endif %}		
 		
 		{# Agregaciones #}
@@ -41,20 +41,20 @@ FROM {{query.table}} AS main_table
 
 {% block join %}
 {# BEGIN RELACIONES #}
-{# Relaciones de tipo clave externa (a uno) #}
+{# Foreign-key relationships #}
 {% for relationship in query.relationships if relationship["attributes"]["type"]=="ForeignKey" %}
-	{% include "lulo_query/join_with_foreign_key.twig.sql" %}
+	{% include "select/join_with_foreign_key.twig.sql" %}
 {% endfor %}
 
-{# Relaciones de tipo clave Muchos a Muchos #}
+{# Many-to-many relationships #}
 {% for relationship in query.relationships if relationship["attributes"]["type"]=="ManyToMany" %}
-		{% include "lulo_query/join_with_many_to_many.twig.sql" %}
+		{% include "select/join_with_many_to_many.twig.sql" %}
 {% endfor %}
 {# END RELACIONES #}
 {% endblock join %}
 
 {% block where %}
-{# Condiciones #}
+{# Conditions #}
 {% if query.filters %}
 WHERE (
 	{% for filter in query.filters %}
@@ -84,7 +84,7 @@ WHERE (
 {% endif %}
 {% endblock where %}
 
-{# Agrupación por campos #}
+{# Group by clause #}
 {% block group_by %}
   {% if query.has_group_by %}
     GROUP BY 
@@ -94,28 +94,26 @@ WHERE (
   {% endif %}
 {% endblock group_by %}
 
-{# Orden de los resultados #}
+{# Order of the results #}
 {% block order %}
 	{% if query.order %}
-			ORDER BY {% for fieldOrder in query.order %}{{fieldOrder.tableAlias}}.{{fieldOrder.field}} {{fieldOrder.orderValue}}{% if not loop.last %}, {% endif %}{% endfor %}
+		ORDER BY {% for fieldOrder in query.order %}{{fieldOrder.tableAlias}}.{{fieldOrder.field}} {{fieldOrder.orderValue}}{% if not loop.last %}, {% endif %}{% endfor %}
 	{% endif %}
 {% endblock order %}
 
-{# Límite de los resultados obtenidos #}
+{# Limit results #}
 {% block limit %}
-	{% if query.limit %}
-	LIMIT {{query.limit[0]}}, {{query.limit[1]}}
-	{% endif %}
+	{% include "select/limit.twig.sql" %}
 {% endblock limit %}
 
-{# Para tener consultas SELECT FOR UPDATE #}
+{# For SELECT FOR UPDATE queries #}
 {% block for_update %}
 	{% if query.for_update %}
 		FOR UPDATE
 	{% endif %}
 {% endblock for_update %}
 
-{# Cierre de transacción #}
+{# Close transaction #}
 {% block commit %}
 	{% if query.is_transaction %}
 		COMMIT
