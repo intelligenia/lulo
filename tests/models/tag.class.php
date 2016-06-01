@@ -58,10 +58,10 @@ class Tag extends \lulo\models\LuloModel{
 	 * */
 	protected static $ATTRIBUTES = [
 		// Clave primaria
-		"stack"=>["type"=>"string", "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
+		"stack"=>["type"=>"string", "max_length"=>32, "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
 		"id" => ["type"=>"int", "verbose_name"=>"Identificador único del usuario", "auto"=>true],
 		// Campos propiamente dichos
-		"name" => ["type"=>"string", "verbose_name"=>"Nombre"],
+		"name" => ["type"=>"string", "max_length"=>32, "verbose_name"=>"Nombre"],
 		"description" => ["type"=>"string", "subtype"=>"doku", "verbose_name"=>"Descripción de la etiqueta"],
 		"parent_id" => ["type"=>"int", "verbose_name"=>"Etiqueta padre", "null"=>true, "default"=>null, "relationship"=>"parent_tag"],
 		// Campos de fecha

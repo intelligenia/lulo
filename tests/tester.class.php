@@ -74,7 +74,14 @@ class Tester{
 	 * Inicialización de la base de datos.
 	 * 	 */
 	public static function init_db(){
-		// Algún día lo terminaré		
+		\lulo\management\Manager::createTable("User");
+		\lulo\management\Manager::createTable("Tag");
+		\lulo\management\Manager::createTable("Photo");
+		\lulo\management\Manager::createTable("Post");
+	}
+	
+	public static function delete_db(){
+		
 	}
 	
 	protected static function create_unique_suffix(){
