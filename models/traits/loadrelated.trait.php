@@ -3,7 +3,7 @@
 namespace lulo\models\traits;
 
 use lulo\containers\Collection as Collection;
-use lulo\containers\QuerySet as QuerySet;
+use lulo\containers\QueryResult as QueryResult;
 
 
 /**
@@ -22,7 +22,7 @@ trait LoadRelated {
 	 * @param array $limit Limit with the values [offset, size].
 	 * @return array Simple array if relatinoship is *ToOne, or array of arrays if relationship type is OneToMany.
 	 * */
-	protected static function _dbLoadRelatedNoModel($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryset"){
+	protected static function _dbLoadRelatedNoModel($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryresult"){
 		// Database
 		$db = static::DB;
 		
@@ -59,8 +59,8 @@ trait LoadRelated {
 			if($container == "collection"){
 				return new Collection($db::getAll($relatedTable, $columnsStr, $remoteCondition, $order, $limit));
 			}
-			if($container == "queryset"){
-				return new QuerySet($db::getAllAsRecordSet($relatedTable, $columnsStr, $remoteCondition, $order, $limit));
+			if($container == "queryresult"){
+				return new QueryResult($db::getAllAsRecordSet($relatedTable, $columnsStr, $remoteCondition, $order, $limit));
 			}
 			return $db::getAll($relatedTable, $columnsStr, $remoteCondition, $order, $limit);
 		}
@@ -77,9 +77,9 @@ trait LoadRelated {
 	* @param array $order Order of the remote objects. E. g. ["name" => "asc, "number" => "desc"]
 	* @param array $limit Limit with the values [offset, size].
 	* @param array $container Container used for the result.
-	* @return array|collection|queryset Array, collection or queryset according to what is specified in $container parameter.
+	* @return array|collection|queryresult Array, collection or queryresult according to what is specified in $container parameter.
 	*/ 
-	protected function _dbLoadRelatedManyToMany($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryset"){
+	protected function _dbLoadRelatedManyToMany($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryresult"){
 		// Relationship properties
 		$relationship = static::metaGetRelationship($relationName);
 		
@@ -173,10 +173,10 @@ trait LoadRelated {
 		// Database to be queried
 		$db = static::DB;
 		
-		// If container is QuerySet it alone can create the container
+		// If container is QueryResult it alone can create the container
 		// from the $db recordset
-		if($container=="queryset"){
-			return new QuerySet($db::joinAsRecordSet($fieldsByTable, $relations, $localConditions, $params), $foreignClass);
+		if($container=="queryresult"){
+			return new QueryResult($db::joinAsRecordSet($fieldsByTable, $relations, $localConditions, $params), $foreignClass);
 		}
 		
 		
@@ -220,14 +220,14 @@ trait LoadRelated {
 	
 	/**
 	* Return related object defined by relationship $relationName.
-	* @deprecated You should be using Lulo Queries instead this method.
+	* @deprecated You should be using Lulo Queries instead of this method.
 	* @param array $remoteCondition Extra condition applied to remote objects. If null, it is ignored.
 	* @param array $order Order of the remote objects. E. g. ["name" => "asc, "number" => "desc"]
 	* @param array $limit Limit with the values [offset, size].
 	* @param array $container Container used for the result.
-	* @return array|collection|queryset Array, collection or queryset according to what is specified in $container parameter.
+	* @return array|collection|queryresult Array, collection or queryresult according to what is specified in $container parameter.
 	*/ 
-	public function dbLoadRelated($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryset"){
+	public function dbLoadRelated($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryresult"){
 		// Relationship $relationName must exist in this model
 		if(!isset(static::$RELATIONSHIPS[$relationName])){
 			throw new \UnexpectedValueException("Relationship {$relationName} does not exist in model ".static::CLASS_NAME);
@@ -238,7 +238,7 @@ trait LoadRelated {
 		$foreignClass = $relationship["model"];
 		
 		// If relationship is between this object and a table
-		// returned data will be array, collection or queryset
+		// returned data will be array, collection or queryresult
 		if(is_null($foreignClass)){
 			if(isset($relationship["table"])){
 				return static::_dbLoadRelatedNoModel($relationName, $remoteCondition, $order, $limit, $container);
