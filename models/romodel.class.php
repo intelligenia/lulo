@@ -131,30 +131,31 @@ abstract class ROModel{
 	
 	
 	/**
-	* Informa si el objeto pasado como parámetro es de esta clase (DIR_Sede).
-	* @param string $object Objeto que queremos ver si es de la clase DIR_Sede.
-	* @return boolean true si $object es de clase DIR_Sede, false en otro caso.
+	* Inform if $object is of class Model
+	* @param string $object Objet to test if its class is of this model.
+	* @return boolean true if $object is of this model's class, false otherwise.
  	*/
 	public static function isInstanceOf($object){
-		// Si no es un objeto, devolvemos false
-		if(!is_object($object)){ return false; }
+		// In case $object is not an object, return false
+		if(!is_object($object)){
+			return false;
+		}
 		$className = static::CLASS_NAME;
 		return ($object instanceof $className);
 	}
 	
 	
 	/**
-	* Informa si el objeto pasado como parámetro es de esta clase (DIR_Sede) o de una clase que hereda de ésta.
-	* @param string $object Objeto que queremos ver si es de la clase DIR_Sede o de una clase que herede de DIR_Sede.
-	* @return boolean true si $object es de clase DIR_Sede o de una clase que herede de DIR_Sede, false en otro caso.
+	* Inform if $object is of class Model or a class that inherits of this model.
+	* @param string $object Objet to test if its class is of this model.
+	* @return boolean true if $object is of this model's class, false otherwise.
  	*/
 	public static function isA($object){
 		$className = static::CLASS_NAME;
 		return is_a($object, $className);
 	}
 	
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////// METODOS MÁGICOS /////////////////////////////////////
+	////////////////////////// MAGIC METHODS ///////////////////////////////////
 	
 	/**
 	* Método mágico: devuelve lo que devuelva la llamada a un método que no se encuentra en el objeto actual pero sí en un objeto que está guardado en sus atributos dinámicos.
@@ -202,7 +203,7 @@ abstract class ROModel{
 		}
 		
 		// Avisamos de que ha ejecutado un método que no existe ni en él ni en sus atributos dinámicos
-		throw new BadMethodCallException("El método {$methodName} no existe en la clase ".static::CLASS_NAME." ni en ninguno de sus atributos dinámicos.");
+		throw new \BadMethodCallException("El método {$methodName} no existe en la clase ".static::CLASS_NAME." ni en ninguno de sus atributos dinámicos.");
 	}
 	
 	
@@ -290,7 +291,7 @@ abstract class ROModel{
 		// Comprobamos si puede editar el atributo en función del
 		// acceso definido por el desarrollador
 		if(!static::canEditAttribute($attribute) and !static::attributeEditionIsCalledFromClassScope()){
-			throw new Exception("No se tiene acceso de escritura para el atributo {$attribute} en ".static::CLASS_NAME.".");
+			throw new \Exception("No se tiene acceso de escritura para el atributo {$attribute} en ".static::CLASS_NAME.".");
 		}
 	}
 	
@@ -803,7 +804,7 @@ abstract class ROModel{
 			}
 			// No existe el atributo dinámico, devolvemos una excepción
 			$strPk = $this->getStrPk();
-			throw new UnexpectedValueException("El atributo {$attributeName} no existe en el objeto {$strPk} del modelo {$model}");
+			throw new \UnexpectedValueException("El atributo {$attributeName} no existe en el objeto {$strPk} del modelo {$model}");
 		}
 		
 		// Propiedades del atributo
@@ -819,7 +820,7 @@ abstract class ROModel{
 		// clase adecuada según el subtipo
 		$subtype = $attributeProperties["subtype"];
 		if($subtype == "date" || $subtype == "datetime" || $subtype == "time"){
-			return new DateTime($this->$attributeName);
+			return new \DateTime($this->$attributeName);
 		}
 		return $this->$attributeName;
 	}
