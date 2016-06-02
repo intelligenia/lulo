@@ -245,7 +245,6 @@ abstract class ROModel{
 			return $this->dynamicAttributes[$name];
 		}
 		return null;
-		//throw new DomainException("El atributo {$name} no existe en este modelo");
 	}
 	
 	
