@@ -9,8 +9,6 @@ require_once __DIR__."/../init.php";
 
 require_once LULO_DIR."/tests/autoloader.php";
 
-require_once LULO_DIR."/tests/tester.class.php";
-
 require_once LULO_DIR."/tests/utils/mimetypefinder.class.php";
 
 ?>

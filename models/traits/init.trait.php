@@ -30,7 +30,7 @@ trait Init {
 		
 		$model = static::CLASS_NAME;
 		$matches = [];
-		if(preg_match("#(\w[\w\d]+)\.(\w[\w\d]+)#", $attributeProperties["on"], $matches)==0){
+		if(preg_match("#^([^\.]+)\.(\w[\w\d]+)$#", $attributeProperties["on"], $matches)==0){
 			throw new \UnexpectedValueException("'on' key must have follow <RemoteModel>.<attribute> pattern where <RemoteModel> is the remote model and <attribute> is the attribute used to link the objects.");
 		}
 		$remoteModel = $matches[1];
@@ -312,7 +312,7 @@ trait Init {
 		}
 		// Every model can be related to itself
 		$relatedModels = array_merge(static::$RELATED_MODELS, [static::CLASS_NAME]);
-		
+		print "Relaciones de ".static::CLASS_NAME."<br>";
 		// For each related model
 		foreach($relatedModels as $model){
 			// For each relationship, a new inverse relationship is created

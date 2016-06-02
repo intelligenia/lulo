@@ -1,5 +1,12 @@
 <?php
 
+namespace lulo\tests;
+
+use \lulo\tests\models\Photo as Photo;
+use \lulo\tests\models\Post as Post;
+use \lulo\tests\models\User as User;
+use \lulo\tests\models\Tag as Tag;
+
 /**
  * Clase que contiene las pruebas, no se usa en la producción de aplicaciones.
  *  */
@@ -74,17 +81,17 @@ class Tester{
 	 * Inicialización de la base de datos.
 	 * 	 */
 	public static function init_db(){
-		\lulo\management\Manager::createTables("User");
-		\lulo\management\Manager::createTables("Tag");
-		\lulo\management\Manager::createTables("Photo");
-		\lulo\management\Manager::createTables("Post");
+		\lulo\management\Manager::createTables(User::CLASS_NAME);
+		\lulo\management\Manager::createTables(Tag::CLASS_NAME);
+		\lulo\management\Manager::createTables(Photo::CLASS_NAME);
+		\lulo\management\Manager::createTables(Post::CLASS_NAME);
 	}
 	
 	public static function delete_db(){
-		\lulo\management\Manager::dropTables("User");
-		\lulo\management\Manager::dropTables("Tag");
-		\lulo\management\Manager::dropTables("Photo");
-		\lulo\management\Manager::dropTables("Post");
+		\lulo\management\Manager::dropTables(User::CLASS_NAME);
+		\lulo\management\Manager::dropTables(Tag::CLASS_NAME);
+		\lulo\management\Manager::dropTables(Photo::CLASS_NAME);
+		\lulo\management\Manager::dropTables(Post::CLASS_NAME);
 	}
 	
 	protected static function create_unique_suffix(){

@@ -1,5 +1,9 @@
 <?php
 
+namespace lulo\tests\models;
+
+use \lulo\tests\utils\MimetypeFinder as MimetypeFinder;
+
 /**
  * Example user class for a social-network-like system.
  * @author Diego J. Romero López at intelligenia.
@@ -14,7 +18,7 @@ class User extends \lulo\models\LuloModel{
 	const TABLE_NAME = "site_user";
 	
 	/** Nombre de la clase */
-	const CLASS_NAME = __CLASS__;
+	const CLASS_NAME = "lulo\\tests\models\User";
 	
 	/**
 	 * Metainformación sobre la clase, se usa para mostrar en los listados
@@ -84,7 +88,7 @@ class User extends \lulo\models\LuloModel{
 	/**
 	 * Clases con las que tiene alguna relación.
 	 * */
-	protected static $RELATED_MODELS = ["Tag", "Photo", "Post"];
+	protected static $RELATED_MODELS = ["lulo\\tests\models\Tag", "lulo\\tests\models\Photo", "lulo\\tests\models\Post"];
 	
 	
 	/** Relaciones con otros modelos (ver Tag para ejemplos y descripción) */

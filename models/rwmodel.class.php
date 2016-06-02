@@ -46,6 +46,8 @@ abstract class RWModel extends ROModel{
 			// In case it is an object and is of the right class 
 			// use it
 			if(is_object($data[$relationName])){
+				var_dump(get_class($data[$relationName]));
+				var_dump($relatedModelName);
 				if(get_class($data[$relationName]) != $relatedModelName){
 					throw new \InvalidArgumentException("El objeto {$data[$relationName]} no es de tipo {$relatedModelName}");
 				}

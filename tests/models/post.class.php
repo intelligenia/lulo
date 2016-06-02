@@ -1,5 +1,7 @@
 <?php
 
+namespace lulo\tests\models;
+
 /**
  * Clase de usuario de ejemplo.
  * @author Diego J. Romero López at intelligenia.
@@ -14,7 +16,7 @@ class Post extends \lulo\models\LuloModel{
 	const TABLE_NAME = "post";
 	
 	/** Nombre de la clase */
-	const CLASS_NAME = __CLASS__;
+	const CLASS_NAME = "lulo\\tests\models\Post";
 	
 	/**
 	 * Metainformación sobre la clase, se usa para mostrar en los listados
@@ -79,7 +81,7 @@ class Post extends \lulo\models\LuloModel{
 	/**
 	 * Clases con las que tiene alguna relación.
 	 * */
-	protected static $RELATED_MODELS = ["User"];
+	protected static $RELATED_MODELS = ["lulo\\tests\models\User"];
 	
 	
 	/** Relaciones con otros modelos (ver Tag para ejemplos y descripción) */
@@ -91,7 +93,7 @@ class Post extends \lulo\models\LuloModel{
 		// Relación con User
 		"owner" => [
 			"type" => "ForeignKey",
-			"model" => "User",
+			"model" => "lulo\\tests\models\User",
 			// Nombre legible de la relación
 			"verbose_name" => "Propietario de la entrada",
 			// Nombre de la relación inversa
@@ -153,7 +155,7 @@ class Post extends \lulo\models\LuloModel{
 		// Para formulario de edición
 		/// Posibles valores para el campo de propietario de este Post
 		if($formFieldName == "owner"){
-			return User::dbLoadAllAsCollection();
+			return \lulo\tests\models\User::dbLoadAllAsCollection();
 		}
 		return null;
 	}

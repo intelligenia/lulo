@@ -7,7 +7,6 @@
 spl_autoload_register("load_test_models");
 
 function load_test_models($class_name){
-	
 	$class_file_name = strtolower($class_name);
 	if(strpos($class_name, "\\") === false){
 		$root_path = LULO_DIR."/tests/models";
