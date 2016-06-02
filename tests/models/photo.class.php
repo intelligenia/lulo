@@ -37,7 +37,7 @@ class Photo extends \lulo\models\LuloModel{
 	*/
 	protected static $ATTRIBUTES = [
 		////////////////////////// Clave primaria
-		"stack"=>["type"=>"string", "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
+		"stack"=>["type"=>"string", "max_length"=>32, "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
 		"id" => ["type"=>"int", "verbose_name"=>"Identificador único del usuario", "auto"=>true],
 		///////////////////////// Campos propiamente dichos
 		// Atributo que nos sirve como clave externa
@@ -53,7 +53,7 @@ class Photo extends \lulo\models\LuloModel{
 		"order_in_gallery" => ["type"=>"int", "verbose_name"=>"Orden de la fotografía"],
 		"photo" => ["type"=>"blob", "verbose_name"=>"Fotografía"],
 		"photo_mimetype" => ["type"=>"string", "verbose_name"=>"Mimetype de la fotografía", "default" =>"application/octet-stream"],
-		"photo_filename" => ["type"=>"string", "verbose_name"=>"Nombre del fichero", "default"=>null, "null"=>true, "auto"=>true],
+		"photo_filename" => ["type"=>"string", "max_length"=>64, "verbose_name"=>"Nombre del fichero", "default"=>null, "null"=>true, "auto"=>true],
 		// Campos de fecha
 		"last_update_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Fecha de última actualización", "auto"=>true],
 		"creation_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Fecha de creación", "auto"=>true],

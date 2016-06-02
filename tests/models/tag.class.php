@@ -160,7 +160,8 @@ class Tag extends \lulo\models\LuloModel{
 			],
 			// Una relación readonly sólo permite consulta
 			"readonly" => false,
-			"on_master_deletion" => "delete"
+			"on_master_deletion" => "delete",
+			"unique" => true
 		],
 		////////////////////////////////////////////////////////////////
 		// Relación con ella misma

@@ -74,14 +74,17 @@ class Tester{
 	 * Inicialización de la base de datos.
 	 * 	 */
 	public static function init_db(){
-		\lulo\management\Manager::createTable("User");
-		\lulo\management\Manager::createTable("Tag");
-		\lulo\management\Manager::createTable("Photo");
-		\lulo\management\Manager::createTable("Post");
+		\lulo\management\Manager::createTables("User");
+		\lulo\management\Manager::createTables("Tag");
+		\lulo\management\Manager::createTables("Photo");
+		\lulo\management\Manager::createTables("Post");
 	}
 	
 	public static function delete_db(){
-		
+		\lulo\management\Manager::dropTables("User");
+		\lulo\management\Manager::dropTables("Tag");
+		\lulo\management\Manager::dropTables("Photo");
+		\lulo\management\Manager::dropTables("Post");
 	}
 	
 	protected static function create_unique_suffix(){
@@ -305,7 +308,7 @@ class Tester{
 	/**
 	 * Tests para la operación INSERT.
 	 * 	 */
-	public static function create_tests(){
+	public static function insert_tests(){
 		print "Tests sobre INSERT<br/>";			
 		// Creamos la etiqueta
 		$name = "TestTagName";
@@ -473,9 +476,10 @@ class Tester{
 	public static function test(){
 		// Lo primero es inicializar la BD
 		static::init_db();
+		
 		srand(date("now"));
 		// Luego, comenzamos con los tests
-		static::create_tests();
+		static::insert_tests();
 		static::delete_tests();
 		static::update_tests();
 		static::select_tests();
@@ -484,6 +488,8 @@ class Tester{
 		static::dbLoad_tests();
 		
 		static::dbLegacy_tests();
+		
+		static::delete_db();
 		
 		die();
 	}

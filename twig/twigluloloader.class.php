@@ -1,6 +1,6 @@
 <?php
 
-namespace lulo\query;
+namespace lulo\twig;
 
 /**
  * Twig template loader for Lulo.
@@ -23,7 +23,7 @@ class TwigLuloLoader implements \Twig_LoaderInterface
 		// If we have specified a raw_path in templates, gets the raw path
 		$matches = [];
 		if(preg_match("/^(!raw_path:)(.+)$/", $name, $matches)){
-			$final_path = __DIR__."/templates/_default/{$matches[2]}";
+			$final_path = LULO_DIR."/sql_templates/_default/{$matches[2]}";
 			if(!file_exists($final_path)){
 				throw new \InvalidArgumentException("Path {$final_path} does not exist");
 			}
@@ -33,16 +33,16 @@ class TwigLuloLoader implements \Twig_LoaderInterface
 		$db_engine = \lulo\db\DB::ENGINE;
 		
 		// First path to try is the specific SQL templates for this DB engine
-		$file_path = __DIR__."/templates/$db_engine/$name";
+		$file_path = LULO_DIR."/sql_templates/$db_engine/$name";
 		if (file_exists($file_path)){
 			$final_path = $file_path;
 		
 		// Second path to try is the default SQL templates for all DB engines
 		// that respect the standard
-		}else if(file_exists(__DIR__."/templates/_default/$name")){
-			$final_path = __DIR__."/templates/_default/$name";
+		}else if(file_exists(LULO_DIR."/sql_templates/_default/$name")){
+			$final_path = LULO_DIR."/sql_templates/_default/$name";
 		}else{
-			throw new \InvalidArgumentException("$name twig template does not exists ({$final_path} tested)");
+			throw new \InvalidArgumentException("$name twig template does not exists (".LULO_DIR."/sql_templates/_default/{$name} tested)");
 		}
 		
 		// Load of the Twig template as a string

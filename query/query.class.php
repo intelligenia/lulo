@@ -15,7 +15,7 @@ use \lulo\query\TupleValue as L_V ;
  * */
 class Query implements \ArrayAccess, \Iterator, \Countable {
 
-	/** Ruta donde está la plantilla SQL */
+	/** SQL templates parent path */
 	const PATH = "";
 
 	/** Database connector of the class \lulo\db\DB */
@@ -563,7 +563,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		$cleanedFieldsToUpdate = $this->cleanFieldsToUpdate($fieldsToUpdate);
 
 		// Construimos la sentencia SQL de la actualización
-		$sqlT = TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/update/query.twig.sql");
+		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/update/query.twig.sql");
 		$sql = $sqlT->render(["query" => $this, "fieldsToUpdate" => $cleanedFieldsToUpdate]);
 
 		// Obtención del código SQL para la actualización.
@@ -624,7 +624,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		}
 
 		// Generamos el SQL de la consulta
-		$sqlT = TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/delete/query.twig.sql");
+		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/delete/query.twig.sql");
 		$sql = $sqlT->render(["query" => $this]);
 
 		// Devolvemos el código SQL de la consulta de eliminación
@@ -656,7 +656,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 	 * 	 */
 	public function sql() {
 		// Si tiene agregationes, usamos un SQL 
-		$sqlT = TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/select/query.twig.sql");
+		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/select/query.twig.sql");
 		return $sqlT->render(["query" => $this]);
 	}
 

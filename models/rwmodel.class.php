@@ -56,7 +56,7 @@ abstract class RWModel extends ROModel{
 			// a clave primaria
 			if(is_object($data[$relationName])){
 				if(get_class($data[$relationName])!=$relatedModelName){
-					throw new InvalidArgumentException("El objeto {$data[$relationName]} no es de tipo {$relatedModelName}");
+					throw new \InvalidArgumentException("El objeto {$data[$relationName]} no es de tipo {$relatedModelName}");
 				}
 				$relatedObject = $data[$relationName];
 			}else{
@@ -113,7 +113,7 @@ abstract class RWModel extends ROModel{
 			}
 			// El tipo de la relación no se conoce
 			else{
-				throw new UnexpectedValueException("La relación {$relationName} tiene como tipo {$relationType}, que no es un tipo de relación válido.");
+				throw new \UnexpectedValueException("La relación {$relationName} tiene como tipo {$relationType}, que no es un tipo de relación válido.");
 			}
 			
 		}
@@ -268,7 +268,7 @@ abstract class RWModel extends ROModel{
 	protected static function assertRWRelationship($relationName, $relationship){
 		// La relación es de sólo lectura
 		if(isset($relationship["readonly"]) and $relationship["readonly"]){
-			throw new UnexpectedValueException("La relación {$relationName} es de sólo lectura (y no se permite edición)");
+			throw new \UnexpectedValueException("La relación {$relationName} es de sólo lectura (y no se permite edición)");
 		}
 	}
 
@@ -321,7 +321,7 @@ abstract class RWModel extends ROModel{
 		// tanto en tiempo de desarrollo como en tiempo de ejecución
 		$junction = $junctions[0];
 		if(count($junctions)>1){
-			throw new UnexpectedValueException("Operación no soportada. No se puede añadir una relación M2M en tablas múltiples, lo siento, haberlo pensado mejor");
+			throw new \UnexpectedValueException("Operación no soportada. No se puede añadir una relación M2M en tablas múltiples, lo siento, haberlo pensado mejor");
 		}
 		
 		$junctionValues = $this->getJunctionValues($conditions, $junction, $object);
@@ -352,7 +352,7 @@ abstract class RWModel extends ROModel{
 		
 		// Si no hay un modelo que cargar, lo creamos nosotros WOW
 		if(is_null($foreignClass)){
-			throw new UnexpectedValueException("La relación {$relationName} es de tipo table y en éstas no se permite edición");
+			throw new \UnexpectedValueException("La relación {$relationName} es de tipo table y en éstas no se permite edición");
 		}
 		
 		// Tipo de relación (ForignKey, OneToMany o ManyToMany)
@@ -370,7 +370,7 @@ abstract class RWModel extends ROModel{
 				}
 				return $this->dbSave();
 			}
-			throw new InvalidArgumentException("La relación {$relationName} requiere un objeto de tipo {$foreignClass}");
+			throw new \InvalidArgumentException("La relación {$relationName} requiere un objeto de tipo {$foreignClass}");
 		}
 		
 		////////////////////////////////////////////////////////////////
@@ -414,7 +414,7 @@ abstract class RWModel extends ROModel{
 			return false;
 		}
 		// Si la relación es de otro tipo, damos un error
-		throw new InvalidArgumentException("La relación {$relationName} no permite la adición de objetos");
+		throw new \InvalidArgumentException("La relación {$relationName} no permite la adición de objetos");
 	}
 	
 }

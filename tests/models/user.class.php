@@ -11,7 +11,7 @@ class User extends \lulo\models\LuloModel{
 	/***************** ATRIBUTOS QUE SE SOBRESCRIBREN *****************/
 	
 	/** Tabla en la que se basa esta clase */
-	const TABLE_NAME = "user";
+	const TABLE_NAME = "site_user";
 	
 	/** Nombre de la clase */
 	const CLASS_NAME = __CLASS__;
@@ -58,19 +58,19 @@ class User extends \lulo\models\LuloModel{
 	 * */
 	protected static $ATTRIBUTES = [
 		// Clave primaria
-		"stack"=>["type"=>"string", "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
+		"stack"=>["type"=>"string", "max_length"=>32, "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
 		"id" => ["type"=>"int", "verbose_name"=>"Identificador único del usuario", "auto"=>true],
 		// Campos propiamente dichos
-		"first_name" => ["type"=>"string", "verbose_name"=>"Nombre", "access"=>"rw"],
-		"last_name" => ["type"=>"string", "verbose_name"=>"Apellidos"],
-		"email" => ["type"=>"string", "subtype"=>"email", "verbose_name"=>"Correo electrónico"],
-		"phone" => ["type"=>"string", "subtype"=>"phone", "verbose_name"=>"Teléfono del usuario", "null"=>true, "default"=>null],
-		"username" => ["type"=>"string", "subtype"=>"username", "verbose_name"=>"Nombre del usuario"],
-		"sha1_password" => ["type"=>"string", "verbose_name"=>"Password"],
+		"first_name" => ["type"=>"string", "max_length"=>32, "verbose_name"=>"Nombre", "access"=>"rw"],
+		"last_name" => ["type"=>"string", "max_length"=>32, "verbose_name"=>"Apellidos"],
+		"email" => ["type"=>"string", "max_length"=>32, "subtype"=>"email", "verbose_name"=>"Correo electrónico"],
+		"phone" => ["type"=>"string", "max_length"=>32, "subtype"=>"phone", "verbose_name"=>"Teléfono del usuario", "null"=>true, "default"=>null],
+		"username" => ["type"=>"string", "max_length"=>32, "subtype"=>"username", "verbose_name"=>"Nombre del usuario"],
+		"sha1_password" => ["type"=>"string", "max_length"=>256, "verbose_name"=>"Password"],
 		// Campo de blob y sus atributos relacionados (mimetype y filename)
 		"main_photo" => ["type"=>"blob", "verbose_name"=>"Foto principal del usuario", "null"=>true, "default"=>null],
 		"main_photo_mimetype" => ["type"=>"string", "verbose_name"=>"Mimetype del campo main_photo", "default" =>"application/octet-stream"],
-		"main_photo_filename" => ["type"=>"string", "verbose_name"=>"Nombre del fichero que contiene el campo main_photo", "null"=>true, "default"=>null],
+		"main_photo_filename" => ["type"=>"string", "max_length"=>32, "verbose_name"=>"Nombre del fichero que contiene el campo main_photo", "null"=>true, "default"=>null],
 		// Campos de fecha
 		"last_update_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Fecha de última actualización", "auto"=>true],
 		"creation_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Fecha de creación", "auto"=>true],

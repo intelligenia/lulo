@@ -16,7 +16,7 @@
             {% endif %}
         {% endif %}
     {% elseif attribute_properties["type"] == "blob" %}
-    LONGBLOB,
+    LONGBLOB
     {% endif %}
 {% endmacro %}
 
@@ -30,6 +30,13 @@
     {% endif %}
 {% endmacro %}
 
+{# Sets autoincrementability for attribute #}
+{% macro attr_autoincrementable(attribute_name, id_attribute_name) %}
+    {% if attribute_name == id_attribute_name %}
+        AUTO_INCREMENT
+    {% else %}
+    {% endif %}
+{% endmacro %}
 
 {# Sets default value for attribute #}
 {% macro attr_default(attribute_properties) %}
@@ -40,10 +47,20 @@
 
 {% import _self as this %}
 
-
-CREATE TABLE {{table}}(
-{% for attribute_name, attribute_properties in attributes %}
-    {{attribute_name}} {{this.attr_type(attribute_properties)}} {{this.attr_nullable(attribute_properties)}},
-{% endfor %}
- PRIMARY KEY ({% for attr_pk in primary_key %}{{attr_pk}}{% if not loop.last %}, {% endif %}{% endfor %})
-)
+{% if model %}
+    CREATE TABLE {{table}}(
+    {% for attribute_name, attribute_properties in attributes %}
+        {{attribute_name}} {{this.attr_type(attribute_properties)}} {{this.attr_nullable(attribute_properties)}} {{this.attr_autoincrementable(attribute_name, id_attribute_name)}},
+    {% endfor %}
+     PRIMARY KEY ({% for attr_pk in primary_key %}{{attr_pk}}{% if not loop.last %}, {% endif %}{% endfor %})
+    )
+{% else %}
+    CREATE TABLE {{table}}(
+    {% for attribute_name, attribute_properties in attributes %}
+        {{attribute_name}} {{this.attr_type(attribute_properties)}} {{this.attr_nullable(attribute_properties)}}{% if not loop.last or (loop.last and unique)%},{% endif %}
+    {% endfor %}
+    {% if unique %}
+        PRIMARY KEY ({% for attribute_name, attribute_properties in attributes %}{{attribute_name}}{% if not loop.last %}, {% endif %}{% endfor %})
+    {% endif %}
+    )
+{% endif %}

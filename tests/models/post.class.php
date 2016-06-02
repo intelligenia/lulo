@@ -59,11 +59,11 @@ class Post extends \lulo\models\LuloModel{
 	 * */
 	protected static $ATTRIBUTES = [
 		// Clave primaria
-		"stack"=>["type"=>"string", "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
+		"stack"=>["type"=>"string", "max_length"=>32, "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
 		"id" => ["type"=>"int", "verbose_name"=>"Identificador único del usuario", "auto"=>true],
 		// Campos propiamente dichos
-		"title" => ["type"=>"string", "verbose_name"=>"Título"],
-		"title_slug" => ["type"=>"string", "verbose_name"=>"Slug del título", "auto"=>true],
+		"title" => ["type"=>"string", "max_length"=>64, "verbose_name"=>"Título"],
+		"title_slug" => ["type"=>"string", "max_length"=>32, "verbose_name"=>"Slug del título", "auto"=>true],
 		"content" => ["type"=>"string", "subtype"=>"doku", "verbose_name"=>"Contenido de la entrada"],
 		"owner_id" => ["type"=>"int", "relationship"=>"owner", "verbose_name"=>"Identificador del usuario propietario"],
 		// Campos de fecha
