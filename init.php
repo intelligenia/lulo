@@ -24,7 +24,7 @@ require_once LULO_DIR__DB."/db.class.php";
 
 require_once LULO_DIR__CONTAINERS."/collection.class.php";
 require_once LULO_DIR__MANAGEMENT."/manager.class.php";
-require_once LULO_DIR__QUERY."/query.class.php";
+require_once LULO_DIR__QUERY."/init.php";
 require_once LULO_DIR__TWIG."/twigtemplate.class.php";
 
 require_once LULO_DIR__MODELS."/init.php";
