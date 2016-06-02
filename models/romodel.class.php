@@ -2,12 +2,10 @@
 
 namespace lulo\models;
 
-use lulo\containers\Collection as Collection;
-
 /**
- * Clase que abstrae una tabla proporcionando
- * acceso de insertado, edición, y borrado a dicha tabla
- * @author Diego J. Romero López en intelligenia.
+ * Abstract class that allows read-only access to a table.
+ * 
+ * @author Diego J. Romero López at intelligenia.
  */
 abstract class ROModel{
 	
@@ -18,78 +16,73 @@ abstract class ROModel{
 	use \lulo\models\traits\Query;
 	use \lulo\models\traits\Repr;
 	
-	/* OVERWRITE */
-	/** Tabla en la que se basa esta clase */
+	/** Model table that will be read */
 	const TABLE_NAME = "<TABLE_NAME>";
 	
     /** Name of autoincrementable id attribute */
     const ID_ATTRIBUTE_NAME = "id";
 	
-	/** Conexión usada */
+	/** Database connection used */
 	const DB = "\lulo\db\DB";
 		
-	/** Nombre de la clase */
+	/** Class name */
 	const CLASS_NAME = "<CLASS_NAME>";
 	
-	/** Metainformación sobre la clase **/
+	/** Metainformation about this model **/
 	protected static $META = [
-		"model_description" =>"<Descripción del modelo>",
+		"model_description" =>"<Model description>",
 		"verbose_name" => "<ROModel>",
 		"verbose_name_plural" => "<ROModels>",
 		"gender" => "<neutral>",
 	];
 	
-	/** Tipos de los atributos de este modelo */
-	// <nombre_atributo>=>propiedades('type'=><tipo_semántico>,'default'=><valor por defecto>,'values'=>'valores asignados si es un select'
+	/** Attributes */
 	protected static $ATTRIBUTES = array();
 	
 	
-	/** Listado de atributos que forman la clave primaria */
+	/** Attributes that form the primary key */
 	protected static $PK_ATTRIBUTES = array();
 	
 	/**
-	 * Clases con las que tiene alguna relación.
-	 * Este atributo es muy importante y debe completarse con los nombres
-	 * de las clases con las que tenga relaciones. Si no, las relaciones
-	 * inversas no funcionarán.
+	 * Models related somehow to this model.
+	 * 
+	 * This attribute is mandatory and MUST contain a list of strings
+	 * with the names of the models that have a direct (or inverse) relationship
+	 * with this model.
+	 * 
+	 * Otherwise, inverse relationships will not work.
 	 * */
 	protected static $RELATED_MODELS = [];
 	
-	/** Relaciones con otros modelos */
-	/*
-	$data = array(
-			'<relationship_name>' => array('type'=>"ForeignKey|ManyToMany|OneToMany", 'model'=>"<model_name>", "condition"=>[<remote_attribute>=><local_attribute>]),
-		);
-	*/
+	/** Relationships with other models */
 	protected static $RELATIONSHIPS = array();
 
-	/** Comprueba si ya se han calculado las relaciones inversas para cada uno de los modelos */
+	/** Flag inverse relationship already automatically created */
 	protected static $INVERSE_RELATIONSHIPS_ACTIVATED = [];
 	
 	/* ENDOVERWRITE */
 	
 	/**
-	 * Información estadística y de control de las clases que
-	 * heredan de esta clase abstracta.
+	 * Stats and computed attributes of children models of ROModel.
 	 * */
 	protected static $CHILDREN_CLASS_ATTRIBUTES = [
 		//"<clase>" => [
-		//	"attribute_names" => [/*Array con los nombres de los atributos*/]
-		//	"atribute_names_str" => "/*Cadena con la selección de atributos en el SELECT de SQL*/"
+		//	"attribute_names" => [/*Attribute name*/]
+		//	"atribute_names_str" => "/*string with the fields that will be used in SQL SELECT */"
 		//]
 	];
 	
-	/* Propiedades de objeto */
+	/* Object properties */
 	
-	/** Almacén de atributos obtenidos de la tupla de la tabla */
+	/** Stores object attributes. These are tuple attributes data. */
 	protected $attributeValues = array();
 	
 	
-	/** Array para establecer propiedades dinámicas */
+	/** Dynamic attributes. */
 	protected $dynamicAttributes = array();
 	
 	
-	/** Caché estática de triggers existentes en esta clase */
+	/** Triggers used for doing some operations automatically */
 	protected static $triggerCache = array();
 	
 	
