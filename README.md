@@ -119,7 +119,7 @@ User::init();
 - End translation of code to English.
 - Translate documents to English.
 - ~~Reimplement Collection to use RecordSet.~~
-- Script for table creation from model.
+- ~~Script for table creation from model.~~ Manager class in management namespace allows creation and deletion of model tables.
 - Migrations.
 
 # License
