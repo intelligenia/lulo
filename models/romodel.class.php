@@ -87,10 +87,10 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Inicializa los atributos estáticos. Actualmente, son los siguientes:
-	 * - $attribute_names: nombre de los atributos del modelo.
-	 * - $attribute_names_str: cadena con los nombres atributos del modelo separados por comas. 
-	 * @return boolean true si los atributos han sido iniciados, false en otro caso.
+	 * Init model static attributes
+	 * - $attribute_names: model attribute names.
+	 * - $attribute_names_str: string with the non-blob attribute names separated by commas.
+	 * @return boolean true if attributes are initiated, false otherwise.
 	 * */
 	private static function initAttributesMetaInformation(){
 		$class = get_called_class();
@@ -99,7 +99,7 @@ abstract class ROModel{
 			static::$CHILDREN_CLASS_ATTRIBUTES[$class] = [];
 		}
 		
-		// Establece los atributos que no son blobs en un array
+		// Non-blob attributes of this model
 		if(!isset(static::$CHILDREN_CLASS_ATTRIBUTES[$class]["attribute_names"])){
 			$nonBlobAttributes = [];
 			foreach(static::$ATTRIBUTES as $attribute=>$attributeProperties){
@@ -117,15 +117,15 @@ abstract class ROModel{
 	
 	
 	/**
-	* Devuelve el nombre de la tabla (el objetivo es la compatibilidad con PHP 5.2).
-	* @return string Nombre de la tabla que contiene la información en BD.
+	* Return the name of the table of this model.
+	* @return string Table name this model depends on.
  	*/
 	public static function getTableName(){ return static::TABLE_NAME; }
 	
 	
 	/**
-	* Devuelve el nombre de la clase a la que pertenece (el objetivo es la compatibilidad con PHP 5.2).
-	* @return string Nombre de la clase de la que es el objeto.
+	* Return the name of this class.
+	* @return string Class name of this model.
  	*/
 	public static function getClassName(){ return static::CLASS_NAME; }
 	
