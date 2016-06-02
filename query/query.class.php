@@ -296,8 +296,8 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		// Si está vacío el LuloQuery devolvemos una excepción.
 		try{
 			return $results[0];
-		}catch(OutOfRangeException $e){
-			throw new OutOfRangeException("Error en get. No hay un objeto que concuerde con la selección");
+		}catch(\OutOfRangeException $e){
+			throw new \OutOfRangeException("Error en get. No hay un objeto que concuerde con la selección");
 		}
 	}
 
@@ -452,14 +452,6 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 	 * @return integer Número de elementos de esta consulta.
 	 * 	 */
 	public function count(){
-		/*// Alias que uso para poder obtener la cuenta del COUNT(*)
-		$aggretate_alias = "count_all";
-		// Selección con el agregado
-		$result = $this->select_aggregate([new \lulo\query\Aggregation("count", $aggretate_alias)]);
-		// Devolvemos la cuenta de elementos
-		return $result[$aggretate_alias];
-		*/
-		
 		// Si no existe el recordset lo creamos.
 		$this->initRecordSet();
 		return $this->recordSetSize;
