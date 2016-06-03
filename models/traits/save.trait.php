@@ -163,6 +163,7 @@ trait Save {
 				}
 			}
 		}
+		return true;
 	}
 	
 	/**

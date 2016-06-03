@@ -54,6 +54,13 @@ class DB {
 					mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 					break;
 
+				case "mssqlnative":
+					static::$db_connection = ADONewConnection(static::DRIVER);
+					static::$db_connection->charSet = 'utf8';
+					static::$db_connection->PConnect($server, $user, $password, $database);
+					static::$db_connection->Execute("USE " . $database);
+					break;
+
 				default:
 					trigger_error("No se ha definido un método válido de conexión a la BD. Contacte con el administrador.", E_USER_ERROR);
 					break;
@@ -73,7 +80,6 @@ class DB {
 	}
 
 	public static function resetQueryCache() {
-
 		static::$db_connection->execute("RESET QUERY CACHE");
 	}
 
