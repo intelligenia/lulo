@@ -1,5 +1,7 @@
 <?php
 
+namespace lulo\tests\utils;
+
 /**
 * MimeTypeFinder class. Base utility for the simple example of the Social-Network classes.
 */

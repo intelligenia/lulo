@@ -15,7 +15,7 @@ use \lulo\query\TupleValue as L_V ;
  * */
 class Query implements \ArrayAccess, \Iterator, \Countable {
 
-	/** Ruta donde está la plantilla SQL */
+	/** SQL templates parent path */
 	const PATH = "";
 
 	/** Database connector of the class \lulo\db\DB */
@@ -296,8 +296,8 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		// Si está vacío el LuloQuery devolvemos una excepción.
 		try{
 			return $results[0];
-		}catch(OutOfRangeException $e){
-			throw new OutOfRangeException("Error en get. No hay un objeto que concuerde con la selección");
+		}catch(\OutOfRangeException $e){
+			throw new \OutOfRangeException("Error en get. No hay un objeto que concuerde con la selección");
 		}
 	}
 
@@ -452,14 +452,6 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 	 * @return integer Número de elementos de esta consulta.
 	 * 	 */
 	public function count(){
-		/*// Alias que uso para poder obtener la cuenta del COUNT(*)
-		$aggretate_alias = "count_all";
-		// Selección con el agregado
-		$result = $this->select_aggregate([new \lulo\query\Aggregation("count", $aggretate_alias)]);
-		// Devolvemos la cuenta de elementos
-		return $result[$aggretate_alias];
-		*/
-		
 		// Si no existe el recordset lo creamos.
 		$this->initRecordSet();
 		return $this->recordSetSize;
@@ -563,7 +555,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		$cleanedFieldsToUpdate = $this->cleanFieldsToUpdate($fieldsToUpdate);
 
 		// Construimos la sentencia SQL de la actualización
-		$sqlT = TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/update/query.twig.sql");
+		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/update/query.twig.sql");
 		$sql = $sqlT->render(["query" => $this, "fieldsToUpdate" => $cleanedFieldsToUpdate]);
 
 		// Obtención del código SQL para la actualización.
@@ -624,7 +616,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		}
 
 		// Generamos el SQL de la consulta
-		$sqlT = TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/delete/query.twig.sql");
+		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/delete/query.twig.sql");
 		$sql = $sqlT->render(["query" => $this]);
 
 		// Devolvemos el código SQL de la consulta de eliminación
@@ -656,7 +648,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 	 * 	 */
 	public function sql() {
 		// Si tiene agregationes, usamos un SQL 
-		$sqlT = TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/select/query.twig.sql");
+		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/select/query.twig.sql");
 		return $sqlT->render(["query" => $this]);
 	}
 

@@ -51,6 +51,7 @@ class DB {
 					static::$db_connection->charSet = 'utf8';
 					static::$db_connection->PConnect($server, $user, $password, $database);
 					mysqli_set_charset(static::$db_connection->_connectionID, 'utf8');
+					mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 					break;
 
 				case "mssqlnative":
@@ -177,22 +178,6 @@ class DB {
 	public static function showKeys($table) {
 
 		return self::showIndex($table);
-	}
-
-	/**
-	 * Devuelve la comprobación '=' de un campo que puede ser 'NULL'.
-	 * Así por ejemplo ante los parámetros
-	 * 		 - ('resource', NULL) --> resource IS NULL
-	 * 		 - ('resource', 'yo/tu') --> resource = 'yo/tu'
-	 * Realiza el escapado del valor, no del nombre del campo
-	 * @param string $field_name nombre del campo
-	 * @param mixed|null $field_value valor del campo.
-	 * @return string check para incluir en la consulta SQL
-	 * @see strEq
-	 * @see strNotEq
-	 */
-	static function check($field_name, $field_value = null) {
-		return "$field_name " . self::strEq($field_value);
 	}
 
 	/**
@@ -1478,30 +1463,13 @@ class DB {
 	}
 
 	/**
-	 * Devuelve todas las filas DISTINTAS de una tabla que cumplen con una condición determinada.
-	 * @param string $table Nombre de la tabla sobre la que se ejecuta la consulta.
-	 * @param array|string $fields Columnas a seleccionar de las filas. Por defecto, selecciona todas.  Por defecto es * (selecciona todos los campos).
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' and field2...". Por defecto es null.
-	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
-	 * @param array|string $limit Límite de filas que se seleccionarán. Por defecto es null.
-	 */
-	public static function getDistinctAll($table, $fields = "*", $condition = null, $order = null, $limit = null) {
-		$fields = self::makeFieldsToSelect($fields);
-		$condition = self::makeWhereCondition($condition);
-		$order = self::makeOrderBy($order);
-		$sql = "SELECT DISTINCT {$fields} FROM {$table} {$condition} {$order} " . self::makeLimit($limit);
-
-		return static::$db_connection->getAll($sql);
-	}
-
-	/**
 	 * Devuelve la longitud de un campo de una tabla.
 	 * @param string $table Nombre de la tabla sobre la que se ejecuta la consulta.
 	 * @param string $field Nombre del campo cuyo tamaño se desea consultar.
 	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
 	 * @return integer Tamaño en bytes del campo de la tabla.
 	 * */
-	public static function fieldLength($table, $field, $condition = null) {
+	private static function fieldLength($table, $field, $condition = null) {
 		$lengthField = "_length_" . $field;
 
 		$sql = "select " . static::$db_connection->length . "($field) as $lengthField from $table" . self::makeWhereCondition($condition);
@@ -1707,229 +1675,6 @@ class DB {
 		return $rs;
 	}
 
-	/**
-	 * Unión natural de tablas con condiciones complejas.
-	 * Las tablas se identificarán por su clave en el array $tables, de manera que la tabla "0" es la primera tabla, la tabla "1" es la segunda, etc.
-	 * @param array $tables Array con los nombres de las tablas de las que se va a hacer la unión natural.
-	 * @param mixed $fields Cadena con la selección o un array con los campos a seleccionar. Si se trata de un array, se usará un nombre del estilo <id_tabla>.<campo>.
-	 * @param array $conditions Array de condiciones, del tipo <id_tabla>.<campo>=><condición>.
-	 * @param array $conditions Array de condiciones extra, del tipo <id_tabla>.<campo>=><condición>.
-	 * @param array $order Array con el orden de los campos, del tipo <id_tabla>.<campo>=><orden>.
-	 * @param mixed $limit Límite de la consulta.
-	 * @param string $operator Operador de conjunción de la condición de la consulta.
-	 * @param boolean $distinct Indica si la consulta ha de ser DISTINCT.
-	 * @return array Array de arrays con los valores de los campos de la/s tabla/s indicada/s.
-	 * */
-	public static function naturalJoin($tables, $fields = "*", $conditions = null, $explicitCondition = null, $order = null, $limit = null, $operator = "and", $distinct = false) {
-
-		//var_dump($conditions);
-		//var_dump($explicitCondition);
-		//var_dump($order);
-		$newTables = array();
-		foreach ($tables as $table) {
-			$uniqueTableName = self::asUniqueTableName($table);
-			$newTables[] = $uniqueTableName;
-			$tableAliasDictionary[$table] = $uniqueTableName;
-		}
-
-		$oldTables = $tables;
-		$tables = $newTables;
-
-		// Nombres de las tablas
-		$aTables = array();
-		$i = 0;
-		$tableAlias = array();
-		foreach ($tables as $table) {
-			$tableAlias[$table] = self::TABLE_ALIAS_PREFIX . "$i";
-			$aTables[] = self::asTableName($table) . " " . $tableAlias[$table];
-			$i++;
-		}
-		$tableSQL = implode(",", $aTables);
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		// Columnas que se van a seleccionar (X.columna_1, Y.columna_2, X.columna_8, etc)
-		$fieldSQL = "";
-		if (is_string($fields) and $fields !== "*")
-			$fields = explode(",", $fields);
-		elseif ($fields === "*")
-			$fieldSQL = $fields;
-		if (is_array($fields)) {
-			foreach ($fields as $field) {
-				$f = explode(self::TABLE_FIELD_SEPARATOR, $field);
-				$fieldTable = $tables[$f[0]];
-				$uniqueField = $tableAlias[$fieldTable] . "." . $f[1];
-				$fieldSQL .= $uniqueField . ",";
-			}
-			$fieldSQL = substr($fieldSQL, 0, strlen($fieldSQL) - 1);
-		} else
-			return null;
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		// Condición implícita, es decir, X.columna => Y.columna
-		$conditionSQL = "";
-		//var_dump($conditions);
-		if (is_array($conditions)) {
-			foreach ($conditions as $fieldLeft => $fieldRight) {
-				$l = explode(self::TABLE_FIELD_SEPARATOR, $fieldLeft);
-				//print_r($l);
-				$fieldLeft = $tableAlias[$tables[$l[0]]] . "." . $l[1];
-
-				$r = explode(self::TABLE_FIELD_SEPARATOR, $fieldRight);
-				//print_r($r);
-				$fieldRight = $tableAlias[$tables[$r[0]]] . "." . $r[1];
-
-				$fieldCondition = $fieldLeft . "=" . $fieldRight;
-				$conditionSQL .= "$fieldCondition and ";
-				//print $field."<br>";
-			}
-			$conditionSQL = substr($conditionSQL, 0, strlen($conditionSQL) - 4);
-		}
-		// Si es una cadena, tenemos una condición compleja, y rezamos porque el usuario
-		// la haya introducido correctamente
-		elseif (is_string($conditions)) {
-			// Sustituimos el carácter \d+. por el alias de la tabla que sea adecuado
-			foreach ($tables as $tableIndex => $tableName)
-				$conditions = str_replace($tableIndex . ".", $tableAlias[$tableName] . ".", $conditions);
-			// La condición SQL es la que ha metido el usuario con los alias
-			$conditionSQL = $conditions;
-		} else {
-			trigger_error("El método " . __METHOD__ . " sólo acepta como parámetro \$conditions array o string.", E_USER_ERROR);
-			die();
-		}
-		if (empty($conditionSQL))
-			$conditionSQL = "1=1";
-		//print $conditionSQL;
-		//die();
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		// Condición explícita, es decir, X.columna => "valor"
-		$explicitConditionSQL = "";
-		if (!is_null($explicitCondition)) {
-			///////////////////////////////////////////////////////////////////////////////////////////////////
-			// Para cada condición explícita, tenemos que procesarla según los parámetros que tenga
-			foreach ($explicitCondition as $field => $value) {
-				// $fieldLeft tiene el nombre del campo con prefijo de tabla,
-				// lo hacemos así para evitar ambigüedades entre nombres de campo
-				$f = explode(self::TABLE_FIELD_SEPARATOR, $field);
-				$fieldLeft = $tableAlias[$tables[$f[0]]] . "." . $f[1];
-				// Por defecto, a menos que se especifique otro, el operador entre atributos es el de IGUALDAD
-				$op = "=";
-				///////////////////////////////////////////////////////////////////////////////////////////////////
-				// Condición con operadores que relacionan dos tablas
-				// Es decir, condiciones del tipo '<id_tabla_m>.<atributo_i>' => '<id_tabla_n>.<atributo_j>'
-				if (is_array($value)) {
-					///////////////////////////////////////////////////////////////////////////////////////////////////
-					// Condiciones al estilo antiguo, es decir "date"=>array('>=','2012-01-19').
-					// Esta condición "antigua" está ANTICUADA. Y NO ha de usarse.
-					// Esta condición sería equivalente a hacer en el estilo NUEVO: "date"=>array('>='=>'2012-01-19')
-					if (isset($value[0]) and isset($value[1])) {
-						$op = $value[0];
-						$value = $value[1];
-
-						if (is_string($value)) {
-							$value = static::$db_connection->qstr($value);
-						} elseif (is_null($value)) {
-							$value = "NULL";
-						} elseif ($value instanceof DateTime) {
-							$value = $value->format('\'Y-m-d H:i:s\'');
-						}
-
-						$explicitConditionSQL .= "$fieldLeft $op $value $operator ";
-					} else {
-						///////////////////////////////////////////////////////////////////////////////////////////////////
-						// Para condiciones compuestas
-						// Estilo "date"=>array('>='=>'2012-01-19', '<='=>'2012-01-27')
-						foreach ($value as $op => $val) {
-							//var_dump($op);
-							if (is_string($val)) {
-								// Condición de igualdad entre columnas de tablas (en lugar de valores estáticos)
-								// La sintáxis utilizada es del estilo "campo"=>array("operador"=>"{nombre_tabla}::nombre_campo")
-								//, o bien "campo"=>array("operador"=>"alias_externo_tabla.nombre_campo")
-								if (preg_match("#^\{(.+)\}::(.+)#", $val, $matches)) {
-									$val = $tableAlias[$tableAliasDictionary[$matches[1]]] . "." . $matches[2];
-								} else if (preg_match("#^(.+)\.(.+)#", $val, $matches)) {
-									$val = self::TABLE_ALIAS_PREFIX . $matches[1] . "." . $matches[2];
-								} else {
-									$val = static::$db_connection->qstr($val);
-								}
-							}
-
-							if (is_null($val)) {
-								$val = "NULL";
-							} elseif ($val instanceof DateTime) {
-								$val = $val->format('\'Y-m-d H:i:s\'');
-							}
-
-							$explicitConditionSQL .= "$fieldLeft $op $val $operator ";
-						}
-						//$op = key($value);
-						//$value = $value[$op];
-					}
-				}
-				///////////////////////////////////////////////////////////////////////////////////////////////////
-				// Condición con valores explícitos, es decir, '<id_tabla>.<atributo>' =>'<valor>'
-				// Consideramos que se le pasa un entero, un flotante o una cadena
-				else {
-					if (is_string($value)) {
-						$value = static::$db_connection->qstr($value);
-					} elseif (is_null($value)) {
-						$value = "NULL";
-					} elseif ($value instanceof DateTime) {
-						$value = $value->format('\'Y-m-d H:i:s\'');
-					}
-
-					$explicitConditionSQL .= "$fieldLeft $op $value $operator ";
-				}
-			}
-		}
-		///////////////////////////////////////////////////////////////////////////////////////////////////
-		// Recortamos el último operador de la consulta SQL (vamos, normalmente quitaremos el último AND de la consulta SQL)
-		$explicitConditionSQL = substr($explicitConditionSQL, 0, strlen($explicitConditionSQL) - (strlen($operator) + 1));
-		//var_dump($explicitConditionSQL);
-		///////////////////////////////////////////////////////////////////////////////////////////////////
-		// Si la condición explícita tiene valores ilegales (esto no debería pasar nunca)
-		// Le ponemos una condición a TRUE siempre
-		if (!is_string($explicitConditionSQL) or empty($explicitConditionSQL))
-			$explicitConditionSQL = "1=1"; // Poco ortodoxo, pero paso, sinceramente
-			
-/////////////////////////////////////////////////////////////////////////////////////////////////
-		// Generación de la consulta SQL
-		// Selección de tuplas
-		$sqlDistinct = "DISTINCT";
-		if (!$distinct)
-			$sqlDistinct = "";
-		//$sql = "SELECT $sqlDistinct $fieldSQL \nFROM $tableSQL \nWHERE ($conditionSQL) AND ($explicitConditionSQL)";
-		$sql = "SELECT $sqlDistinct $fieldSQL \nFROM {$aTables[0]} ";
-		for ($i = 1; $i < count($aTables); $i++)
-			$sql .= "INNER JOIN {$aTables[$i]} ";
-		$sql .= "\n";
-		$sql .=" ON ($conditionSQL) AND ($explicitConditionSQL)";
-		// Si tiene un ORDEN, se lo metemos
-		if ($order != null)
-			$sql .= self::makeOrderBy($order) . "\n";
-		// Si tiene un LÍMITE, se lo metemos
-		if ($limit != null)
-			$sql .= self::makeLimit($limit) . "\n";
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		// Devolución de resultados
-		//print $sql."<br/><br/>";
-		$results = static::$db_connection->getAll($sql);
-		return $results;
-	}
-
-	/**
-	 * Unión natural de tablas con condiciones complejas.
-	 * Las tablas se identificarán por su clave en el array $tables, de manera que la tabla "0" es la primera tabla, la tabla "1" es la segunda, etc.
-	 * @param array $tables Array con los nombres de las tablas de las que se va a hacer la unión natural.
-	 * @param mixed $fields Cadena con la selección o un array con los campos a seleccionar. Si se trata de un array, se usará un nombre del estilo <id_tabla>.<campo>.
-	 * @param array $conditions Array de condiciones, del tipo <id_tabla>.<campo>=><condición>.
-	 * @param array $conditions Array de condiciones extra, del tipo <id_tabla>.<campo>=><condición>.
-	 * @param array $order Array con el orden de los campos, del tipo <id_tabla>.<campo>=><orden>.
-	 * @param mixed $limit Límite de la consulta.
-	 * @param string $operator Operador de conjunción de la condición de la consulta.
-	 * @return array Array de arrays con los valores de los campos de la/s tabla/s indicada/s.
-	 * */
-	public static function distinctNaturalJoin($tables, $fields = "*", $conditions = null, $explicitCondition = null, $order = null, $limit = null, $operator = "and") {
-		return self::naturalJoin($tables, $fields, $conditions, $explicitCondition, $order, $limit, $operator, $distinct = true);
-	}
 
 	/**
 	 * Actualiza una tabla de la base de datos.

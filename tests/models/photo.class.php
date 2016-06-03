@@ -1,5 +1,9 @@
 <?php
 
+namespace lulo\tests\models;
+
+use \lulo\tests\utils\MimetypeFinder as MimetypeFinder;
+
 /**
  * Each one of the photographs of an user in a social-network-like website.
  * @author Diego J. Romero López at intelligenia.
@@ -13,7 +17,7 @@ class Photo extends \lulo\models\LuloModel{
 	const TABLE_NAME = "photo";
 	
 	/** Nombre de la clase */
-	const CLASS_NAME = __CLASS__;
+	const CLASS_NAME = "lulo\\tests\models\Photo";
 	
 	/**
 	 * Metainformación sobre la clase, se usa para mostrar en los listados
@@ -37,12 +41,12 @@ class Photo extends \lulo\models\LuloModel{
 	*/
 	protected static $ATTRIBUTES = [
 		////////////////////////// Clave primaria
-		"stack"=>["type"=>"string", "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
+		"stack"=>["type"=>"string", "max_length"=>32, "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
 		"id" => ["type"=>"int", "verbose_name"=>"Identificador único del usuario", "auto"=>true],
 		///////////////////////// Campos propiamente dichos
 		// Atributo que nos sirve como clave externa
 		"user_id" => [
-			"type"=>"int", "subtype"=>"ForeignKey", "name"=>"user", "on"=>"User.id", "related_name"=>"photos",
+			"type"=>"int", "subtype"=>"ForeignKey", "name"=>"user", "on"=>"lulo\\tests\models\User.id", "related_name"=>"photos",
 			// A partir de aquí abajo todo son parámetros opcionales
 			"verbose_name"=>"Propietario de la foto",
 			"related_verbose_name" => "Fotografías del usuario",
@@ -53,7 +57,7 @@ class Photo extends \lulo\models\LuloModel{
 		"order_in_gallery" => ["type"=>"int", "verbose_name"=>"Orden de la fotografía"],
 		"photo" => ["type"=>"blob", "verbose_name"=>"Fotografía"],
 		"photo_mimetype" => ["type"=>"string", "verbose_name"=>"Mimetype de la fotografía", "default" =>"application/octet-stream"],
-		"photo_filename" => ["type"=>"string", "verbose_name"=>"Nombre del fichero", "default"=>null, "null"=>true, "auto"=>true],
+		"photo_filename" => ["type"=>"string", "max_length"=>64, "verbose_name"=>"Nombre del fichero", "default"=>null, "null"=>true, "auto"=>true],
 		// Campos de fecha
 		"last_update_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Fecha de última actualización", "auto"=>true],
 		"creation_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Fecha de creación", "auto"=>true],
@@ -67,7 +71,7 @@ class Photo extends \lulo\models\LuloModel{
 	/**
 	 * Clases con las que tiene alguna relación
 	 * */
-	protected static $RELATED_MODELS = ["User"];
+	protected static $RELATED_MODELS = ["lulo\\tests\models\User"];
 	
 	
 	/** Relaciones con otros modelos */
@@ -120,7 +124,7 @@ class Photo extends \lulo\models\LuloModel{
 		// Para formulario de edición
 		/// Posibles valores para el campo de propietario de este Tag
 		if($formFieldName == "user"){
-			return User::dbLoadAllAsCollection();
+			return \lulo\tests\models\User::dbLoadAllAsCollection();
 		}
 		return null;
 	}

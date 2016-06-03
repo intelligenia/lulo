@@ -1,6 +1,6 @@
 <?php
 
-namespace lulo\query;
+namespace lulo\twig;
 
 require_once LULO_DIR__DEPENDENCES__VENDOR.'/twig/twig/lib/Twig/Autoloader.php';
 require_once __DIR__.'/twigluloloader.class.php';
@@ -54,7 +54,7 @@ class TwigTemplate
 	protected static function twigFactory($debug_mode=false)
 	{
 		\Twig_Autoloader::register();
-		$loader = new \lulo\query\TwigLuloLoader('');
+		$loader = new \lulo\twig\TwigLuloLoader('');
 		$twig = new \Twig_Environment($loader, array(
 			"cache" => static::CACHE_PATH,
 			"debug" => $debug_mode
@@ -98,7 +98,7 @@ class TwigTemplate
 	 * */
 	public static function factoryResource($resource, $debug_mode=false)
 	{
-		$twigTemplate = new TwigTemplate();
+		$twigTemplate = new \lulo\twig\TwigTemplate();
 		$twigTemplate->twig = static::twigFactory($debug_mode);
 		$twigTemplate->resource = $resource;
 		return $twigTemplate;
@@ -120,7 +120,7 @@ class TwigTemplate
 	 * */
 	public static function factoryString($twig_code, $debug_mode=false)
 	{
-		$twigTemplate = new TwigTemplate();
+		$twigTemplate = new \lulo\twig\TwigTemplate();
 		$twigTemplate->twig = static::twigFactoryFromString($twig_code, $debug_mode);
 		$twigTemplate->resource = $twig_code;
 		return $twigTemplate;

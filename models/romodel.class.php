@@ -2,12 +2,10 @@
 
 namespace lulo\models;
 
-use lulo\containers\Collection as Collection;
-
 /**
- * Clase que abstrae una tabla proporcionando
- * acceso de insertado, edición, y borrado a dicha tabla
- * @author Diego J. Romero López en intelligenia.
+ * Abstract class that allows read-only access to a table.
+ * 
+ * @author Diego J. Romero López at intelligenia.
  */
 abstract class ROModel{
 	
@@ -18,86 +16,81 @@ abstract class ROModel{
 	use \lulo\models\traits\Query;
 	use \lulo\models\traits\Repr;
 	
-	/* OVERWRITE */
-	/** Tabla en la que se basa esta clase */
+	/** Model table that will be read */
 	const TABLE_NAME = "<TABLE_NAME>";
 	
     /** Name of autoincrementable id attribute */
     const ID_ATTRIBUTE_NAME = "id";
 	
-	/** Conexión usada */
+	/** Database connection used */
 	const DB = "\lulo\db\DB";
 		
-	/** Nombre de la clase */
+	/** Class name */
 	const CLASS_NAME = "<CLASS_NAME>";
 	
-	/** Metainformación sobre la clase **/
+	/** Metainformation about this model **/
 	protected static $META = [
-		"model_description" =>"<Descripción del modelo>",
+		"model_description" =>"<Model description>",
 		"verbose_name" => "<ROModel>",
 		"verbose_name_plural" => "<ROModels>",
 		"gender" => "<neutral>",
 	];
 	
-	/** Tipos de los atributos de este modelo */
-	// <nombre_atributo>=>propiedades('type'=><tipo_semántico>,'default'=><valor por defecto>,'values'=>'valores asignados si es un select'
+	/** Attributes */
 	protected static $ATTRIBUTES = array();
 	
 	
-	/** Listado de atributos que forman la clave primaria */
+	/** Attributes that form the primary key */
 	protected static $PK_ATTRIBUTES = array();
 	
 	/**
-	 * Clases con las que tiene alguna relación.
-	 * Este atributo es muy importante y debe completarse con los nombres
-	 * de las clases con las que tenga relaciones. Si no, las relaciones
-	 * inversas no funcionarán.
+	 * Models related somehow to this model.
+	 * 
+	 * This attribute is mandatory and MUST contain a list of strings
+	 * with the names of the models that have a direct (or inverse) relationship
+	 * with this model.
+	 * 
+	 * Otherwise, inverse relationships will not work.
 	 * */
 	protected static $RELATED_MODELS = [];
 	
-	/** Relaciones con otros modelos */
-	/*
-	$data = array(
-			'<relationship_name>' => array('type'=>"ForeignKey|ManyToMany|OneToMany", 'model'=>"<model_name>", "condition"=>[<remote_attribute>=><local_attribute>]),
-		);
-	*/
+	/** Relationships with other models */
 	protected static $RELATIONSHIPS = array();
 
-	/** Comprueba si ya se han calculado las relaciones inversas para cada uno de los modelos */
+	/** Flag inverse relationship already automatically created */
 	protected static $INVERSE_RELATIONSHIPS_ACTIVATED = [];
 	
 	/* ENDOVERWRITE */
 	
 	/**
-	 * Información estadística y de control de las clases que
-	 * heredan de esta clase abstracta.
+	 * Stats and computed attributes of children models of ROModel.
 	 * */
 	protected static $CHILDREN_CLASS_ATTRIBUTES = [
 		//"<clase>" => [
-		//	"attribute_names" => [/*Array con los nombres de los atributos*/]
-		//	"atribute_names_str" => "/*Cadena con la selección de atributos en el SELECT de SQL*/"
+		//	"attribute_names" => [/*Attribute name*/]
+		//	"atribute_names_str" => "/*string with the fields that will be used in SQL SELECT */"
 		//]
 	];
 	
-	/* Propiedades de objeto */
+	/* Object properties */
 	
-	/** Almacén de atributos obtenidos de la tupla de la tabla */
+	/** Stores object attributes. These are tuple attributes data. */
 	protected $attributeValues = array();
 	
 	
-	/** Array para establecer propiedades dinámicas */
+	/** Dynamic attributes. */
 	protected $dynamicAttributes = array();
 	
 	
-	/** Caché estática de triggers existentes en esta clase */
+	/** Triggers used for doing some operations automatically */
 	protected static $triggerCache = array();
 	
 	
 	/**
-	 * Inicializa los atributos estáticos. Actualmente, son los siguientes:
-	 * - $attribute_names: nombre de los atributos del modelo.
-	 * - $attribute_names_str: cadena con los nombres atributos del modelo separados por comas. 
-	 * @return boolean true si los atributos han sido iniciados, false en otro caso.
+	 * Init model static attributes
+	 * - $attribute_names: model attribute names.
+	 * - $attribute_names_str: string with the non-blob attribute names separated by commas.
+	 * @return boolean true if attributes are initiated, false otherwise.
 	 * */
 	private static function initAttributesMetaInformation(){
 		$class = get_called_class();
@@ -106,7 +99,7 @@ abstract class ROModel{
 			static::$CHILDREN_CLASS_ATTRIBUTES[$class] = [];
 		}
 		
-		// Establece los atributos que no son blobs en un array
+		// Non-blob attributes of this model
 		if(!isset(static::$CHILDREN_CLASS_ATTRIBUTES[$class]["attribute_names"])){
 			$nonBlobAttributes = [];
 			foreach(static::$ATTRIBUTES as $attribute=>$attributeProperties){
@@ -124,44 +117,45 @@ abstract class ROModel{
 	
 	
 	/**
-	* Devuelve el nombre de la tabla (el objetivo es la compatibilidad con PHP 5.2).
-	* @return string Nombre de la tabla que contiene la información en BD.
+	* Return the name of the table of this model.
+	* @return string Table name this model depends on.
  	*/
 	public static function getTableName(){ return static::TABLE_NAME; }
 	
 	
 	/**
-	* Devuelve el nombre de la clase a la que pertenece (el objetivo es la compatibilidad con PHP 5.2).
-	* @return string Nombre de la clase de la que es el objeto.
+	* Return the name of this class.
+	* @return string Class name of this model.
  	*/
 	public static function getClassName(){ return static::CLASS_NAME; }
 	
 	
 	/**
-	* Informa si el objeto pasado como parámetro es de esta clase (DIR_Sede).
-	* @param string $object Objeto que queremos ver si es de la clase DIR_Sede.
-	* @return boolean true si $object es de clase DIR_Sede, false en otro caso.
+	* Inform if $object is of class Model
+	* @param string $object Objet to test if its class is of this model.
+	* @return boolean true if $object is of this model's class, false otherwise.
  	*/
 	public static function isInstanceOf($object){
-		// Si no es un objeto, devolvemos false
-		if(!is_object($object)){ return false; }
+		// In case $object is not an object, return false
+		if(!is_object($object)){
+			return false;
+		}
 		$className = static::CLASS_NAME;
 		return ($object instanceof $className);
 	}
 	
 	
 	/**
-	* Informa si el objeto pasado como parámetro es de esta clase (DIR_Sede) o de una clase que hereda de ésta.
-	* @param string $object Objeto que queremos ver si es de la clase DIR_Sede o de una clase que herede de DIR_Sede.
-	* @return boolean true si $object es de clase DIR_Sede o de una clase que herede de DIR_Sede, false en otro caso.
+	* Inform if $object is of class Model or a class that inherits of this model.
+	* @param string $object Objet to test if its class is of this model.
+	* @return boolean true if $object is of this model's class, false otherwise.
  	*/
 	public static function isA($object){
 		$className = static::CLASS_NAME;
 		return is_a($object, $className);
 	}
 	
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////// METODOS MÁGICOS /////////////////////////////////////
+	////////////////////////// MAGIC METHODS ///////////////////////////////////
 	
 	/**
 	* Método mágico: devuelve lo que devuelva la llamada a un método que no se encuentra en el objeto actual pero sí en un objeto que está guardado en sus atributos dinámicos.
@@ -209,7 +203,7 @@ abstract class ROModel{
 		}
 		
 		// Avisamos de que ha ejecutado un método que no existe ni en él ni en sus atributos dinámicos
-		throw new BadMethodCallException("El método {$methodName} no existe en la clase ".static::CLASS_NAME." ni en ninguno de sus atributos dinámicos.");
+		throw new \BadMethodCallException("El método {$methodName} no existe en la clase ".static::CLASS_NAME." ni en ninguno de sus atributos dinámicos.");
 	}
 	
 	
@@ -245,7 +239,6 @@ abstract class ROModel{
 			return $this->dynamicAttributes[$name];
 		}
 		return null;
-		//throw new DomainException("El atributo {$name} no existe en este modelo");
 	}
 	
 	
@@ -298,7 +291,7 @@ abstract class ROModel{
 		// Comprobamos si puede editar el atributo en función del
 		// acceso definido por el desarrollador
 		if(!static::canEditAttribute($attribute) and !static::attributeEditionIsCalledFromClassScope()){
-			throw new Exception("No se tiene acceso de escritura para el atributo {$attribute} en ".static::CLASS_NAME.".");
+			throw new \Exception("No se tiene acceso de escritura para el atributo {$attribute} en ".static::CLASS_NAME.".");
 		}
 	}
 	
@@ -811,7 +804,7 @@ abstract class ROModel{
 			}
 			// No existe el atributo dinámico, devolvemos una excepción
 			$strPk = $this->getStrPk();
-			throw new UnexpectedValueException("El atributo {$attributeName} no existe en el objeto {$strPk} del modelo {$model}");
+			throw new \UnexpectedValueException("El atributo {$attributeName} no existe en el objeto {$strPk} del modelo {$model}");
 		}
 		
 		// Propiedades del atributo
@@ -827,7 +820,7 @@ abstract class ROModel{
 		// clase adecuada según el subtipo
 		$subtype = $attributeProperties["subtype"];
 		if($subtype == "date" || $subtype == "datetime" || $subtype == "time"){
-			return new DateTime($this->$attributeName);
+			return new \DateTime($this->$attributeName);
 		}
 		return $this->$attributeName;
 	}

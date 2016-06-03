@@ -1,5 +1,7 @@
 <?php
 
+namespace lulo\tests\models;
+
 /**
  * Tag example class that shows how to use LuloModel models.
  * @author Diego J. Romero López at intelligenia.
@@ -14,7 +16,7 @@ class Tag extends \lulo\models\LuloModel{
 	
 	
 	/** Nombre de la clase */
-	const CLASS_NAME = __CLASS__;
+	const CLASS_NAME = "lulo\\tests\models\Tag";
 	
 	/**
 	 * Metainformación sobre la clase, se usa para mostrar en los listados
@@ -58,10 +60,10 @@ class Tag extends \lulo\models\LuloModel{
 	 * */
 	protected static $ATTRIBUTES = [
 		// Clave primaria
-		"stack"=>["type"=>"string", "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
+		"stack"=>["type"=>"string", "max_length"=>32, "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
 		"id" => ["type"=>"int", "verbose_name"=>"Identificador único del usuario", "auto"=>true],
 		// Campos propiamente dichos
-		"name" => ["type"=>"string", "verbose_name"=>"Nombre"],
+		"name" => ["type"=>"string", "max_length"=>32, "verbose_name"=>"Nombre"],
 		"description" => ["type"=>"string", "subtype"=>"doku", "verbose_name"=>"Descripción de la etiqueta"],
 		"parent_id" => ["type"=>"int", "verbose_name"=>"Etiqueta padre", "null"=>true, "default"=>null, "relationship"=>"parent_tag"],
 		// Campos de fecha
@@ -77,7 +79,7 @@ class Tag extends \lulo\models\LuloModel{
 	/**
 	 * Clases con las que tiene alguna relación
 	 * */
-	protected static $RELATED_MODELS = ["User"];
+	protected static $RELATED_MODELS = ["lulo\\tests\models\User"];
 	
 	
 	/** Relaciones con otros modelos */
@@ -140,7 +142,7 @@ class Tag extends \lulo\models\LuloModel{
 		// Relación con User
 		"users" => [
 			"type" => "ManyToMany",
-			"model" => "User",
+			"model" => "lulo\\tests\models\User",
 			// Nombre legible de la relación
 			"verbose_name" => "Usuarios con esta etiqueta",
 			// Nombre de la relación inversa
@@ -160,13 +162,14 @@ class Tag extends \lulo\models\LuloModel{
 			],
 			// Una relación readonly sólo permite consulta
 			"readonly" => false,
-			"on_master_deletion" => "delete"
+			"on_master_deletion" => "delete",
+			"unique" => true
 		],
 		////////////////////////////////////////////////////////////////
 		// Relación con ella misma
 		"parent_tag" => [
 			"type" => "ForeignKey",
-			"model" => "Tag",
+			"model" => "lulo\\tests\models\Tag",
 			// Nombre legible de la relación
 			"verbose_name" => "Etiqueta padre",
 			// Nombre de la relación inversa
