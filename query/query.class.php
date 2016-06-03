@@ -49,38 +49,43 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 	public $has_group_by = false;
 
 	/**
-	 * Indica si la acción de eliminación o actualización ha de ser envuelta por una transacción
+	 * Should this query be wrapped in a transaction?
 	 */
 	public $is_transaction = false;
 	
 	/**
-	 * Cada uno de los grupos de condiciones. Es una disyunción de condiciones AND.
-	 * Esto es, una lista de objetos ConjunctionCondition.
+	 * Each one of the condition group. Is a disjunction of AND-conditions.
+	 * A list of objects ConditionConjunction.
 	 */
 	public $filters = [];
 
-	/** Orden de los objetos obtenidos */
+	/** Order of the returned objects */
 	public $order = null;
 
-	/** Límite de tuplas */
+	/** Limit of returned results */
 	public $limit = null;
 	
-	/** Indica si se trata de una consulta SELECT FOR UPDATE */
+	/** Is it a SELECT FOR UPDATE statement? */
 	public $for_update = false;
 
 	/**
-	 * Índice actual. Usado en las operaciones de la implementación
-	 * de la interfaz Iterator
+	 * Current position. Used in operations of Iterator interface.
 	 * */
 	protected $currentIndex = 0;
 
-	/** RecordSet de la consulta */
+	/** Database cursor in the form of RecordSet for this query */
 	protected $recordSet = null;
 
-	/** Tamaño del RecordSet */
+	/** RecordSet size */
 	protected $recordSetSize = null;
 
-	public function getTable($model = null) {
+	/**
+	 * Return the name of the table of the model passed as paremeter or the
+	 * main modell if null.
+	 * @param string $model Model to get its table name.
+	 * @return string table name of $model or if $model is null, $this->model
+	 * 	 */
+	public function getTable($model=null) {
 		if (is_null($model)) {
 			$model = $this->model;
 		}
@@ -89,28 +94,28 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
 	/*	 * *************************************************************** */
 	/*	 * *************************************************************** */
-	/* API privada */
+	/* Private API */
 
 	/**
-	 * Añade un modelo al listado de modelos que se usan en la consulta.
-	 * Sólo debería llamarse desde ConditionConjunction y Condition
-	 * @param string $relationshipName Nombre de la relación.
-	 * @param string $relatedModel Nombre del modelo relacionado
+	 * Add a model to the list of models neede to this query.
+	 * Called from ConditionConjunction and Condition
+	 * @param string $relationshipName Relationship whose model we want to add.
 	 * */
-	public function addRelatedModel($relationshipName, $relatedModel = null) {
+	public function addRelatedModel($relationshipName) {
 		$model = $this->model;
 		$relationship = $model::metaGetRelationship($relationshipName);
 
-		// Tomamos el modelo relacionado de la relación (si no se ha pasado)
-		if (is_null($relatedModel)) {
-			$relatedModel = $relationship["model"];
-		}
-		// Añadimos el modelo relacionado a la lista de modelos
+		// Related model
+		$relatedModel = $relationship["model"];
+
+		// Adding related model to related model list
 		$this->relatedModels[] = $relatedModel;
-		// Añadimos su tabla a la lista de tablas relacionadas
+		
+		// Adding related model table to related table list
 		$this->relatedTables[] = $relatedModel::getTableName();
-		// Añadimos la relación $relationshipName de $relatedModel
-		// a la lista de relaciones relacionadas
+		
+		// Adding relationship $relationshipName of $relatedModel
+		// to the relationship list
 		$this->relationships[$relationshipName] = [
 			"model" => $relatedModel,
 			"table" => $relatedModel::getTableName(),
@@ -123,41 +128,41 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
 	
 	/**
-	 * Filtro de adición o exclusión.
-	 * @param bool $isPositive Indica si es positivo (filtro de inclusión) o negativo (filtro de exclusión).
-	 * @param array $paramters Parámetros del filtro.
-	 * @return object Referencia a este objeto (this).
+	 * Filter or exclusion.
+	 * @param bool $isPositive Is the filter positive? A positive filter is an including filter. A negative filter is a excluding filter.
+	 * @param array $parameters Filter parameters.
+	 * @return object Reference to current object (this).
 	 * */
 	protected function _f($isPositive, $parameters) {
-		// Si no hay parámetros, no hacemos nada
+		// If there is no paremeters, end returning reference to this
 		if (count($parameters) == 0) {
 			return $this;
 		}
 
-		// ¿Es una consulta positiva (filter) o negativa (exclude)?
+		// Is a positive (including) or negative (excluding) filter
 		if ($isPositive) {
 			$type = "positive";
 		} else {
 			$type = "negative";
 		}
 
-		// Generación de los grupos de condiciones condiciones
+		// Generation of condition groups
 		$conditionGroups = [];
 		foreach ($parameters as $conditionGroup) {
 			$conditionGroups[] = new \lulo\query\ConditionConjunction($this, $conditionGroup);
 		}
-		// Añadimos el nuevo filtro, con su tipo
+		// Adding a new filter specifying if the filter is positive or negative
 		$this->filters[] = ["type" => $type, "conditionGroups" => $conditionGroups];
 		return $this;
 	}
 	
-	/* FIN de API privada */
+	/* END of Private API */
 	/*	 * *************************************************************** */
 	/*	 * *************************************************************** */
 
 	/*	 * *************************************************************** */
 	/*	 * *************************************************************** */
-	/* API pública */
+	/* Public API */
 
 	/**
 	 * Construye un LuloQuery para un modelo determinado.
@@ -665,183 +670,176 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
         
 	/**
-	 * Tamaño de los resultados obtenidos.
-	 * @return integer Tamaño del QueryResult obtenido.
+	 * Get the size of the query, that is, the number of objects of this query.
+	 * @return integer Size of the query.
 	 **/
   public function size(){
 		return $this->recordSetSize;
 	}
         
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Métodos de RecordSet */
+	/* RecordSet methods */
 
 	/**
-	 * Obtiene la colección de objetos del tipo indicado según la
-	 * condición que haya seleccionado el usuario.
+	 * Init the recordset getting
 	 * */
 	protected function initRecordSet() {
 		$db = $this->db;
-		// Comprueba si la colección ha sido iniciada, si ya estaba
-		// no hace nada
+		// If the RecordSet has been initialized, don't do anything
 		if (!is_null($this->recordSet)) {
 			return false;
 		}
-		// Si no estaba iniciada, la inicia y crea los objetos
+		// Otherwise, execute the stored SQL and get the size of the RecordSet
 		$sql = $this->sql();
 		$this->recordSet = $db::execute($sql);
 		$this->recordSetSize = $this->recordSet->RecordCount();
 	}
 
-	
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Métodos de colección */
+	/* Collection methods */
 
 	/**
-	 * Obtiene la colección completa.
+	 * Get a collection with all the objects of this query.
+	 * @return object Collection that contains all the object of this query.
 	 * */
 	public function collection() {
-        	$db = $this->db;
-		// Inicia la colección y crea los objetos
+       	$db = $this->db;
 		$sql = $this->sql();
 		$rows = $db::execute($sql);
 		$model = $this->model;
 		return new \Collection($model::arrayFactoryFromRows($rows));
 	}
 
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Interfaz de ArrayAccess */
+	/* ArrayAccess interface */
 
 	/**
-	 * Indica si el elemento en la posición $offset existe.
-	 * @param integer $offset Índice del elemento a comprobar.
-	 * @return boolean true si el elemento existe, false en otro caso.
+	 * Does the position $offset exists in the query?
+	 * @param integer $offset Position to test.
+	 * @return boolean true if there is an object in that position, false otherwise.
 	 * */
 	public function offsetExists($offset) {
-		// Lo primero es comprobar el offset es legal
+		// Is the offset legal?
 		if (!is_numeric($offset) or $offset < 0) {
 			return false;
 		}
 
-		// Inicializamos el RecordSet si es necesario
+		// Init RecordSet if needed
 		$this->initRecordSet();
 
-		// No lo tenemos cargado en los resultados, obtenemos
-		// el tamaño del RecordSet y comprobamos si el offset es
-		// menor que éste
-		$querySize = $this->recordSetSize;
-		return ( $offset < $querySize );
+		// Return if the offset is less than the size of the query
+		return ( $offset < $this->recordSetSize );
 	}
 
 	
 	/**
-	 * Obtiene el elemento en la posición $offset.
-	 * @param integer $offset Índice del elemento a obtener.
-	 * @return object Objeto modelo en la posición $offset.
+	 * Get element at position $offset.
+	 * @param integer $offset Index of the element we want to get.
+	 * @return object Object in position $offset.
 	 * */
 	public function offsetGet($offset) {
-		// Lo primero es comprobar el offset es legal
+		// Is the offset legal?
 		if (!is_numeric($offset) or $offset < 0) {
 			return false;
 		}
-		// Inicializamos el RecordSet si es necesario
+		// Init RecordSet if needed
 		$this->initRecordSet();
 
-		// No lo tenemos cargado en los resultados, obtenemos
-		// el tamaño del RecordSet y comprobamos si el offset es
-		// menor que éste. Si lo es, añadimos el elemento a results y lo
-		// devolvemos
-		$querySize = $this->recordSetSize;
-		if ($offset >= $querySize) {
-			// Si hemos pasado un offset incorrecto, devolvemos false.
-			throw new \OutOfRangeException("La posición {$offset} es mayor que el tamaño del LuloQuery");
+		// If position is greater than the recorset throw exception
+		// informing that to developer
+		if ($offset >= $this->recordSetSize) {
+			throw new \OutOfRangeException("{$offset} position is greater than the size of this Query");
 		}
 
-		// Si la posición actual es la deseada, la fila que se usará para
-		// construir el objeto es la actual
+		// If $offset is current position, get current position row
 		if ($this->currentIndex == $offset) {
 			$newRow = $this->recordSet->fields;
 		}
-		// Si la posición actual es otra distinta, nos movemos a la posición
-		// y obtenemos la tupla en la posición actual
+		// Otherwise, move recordset to offset and get new position row
 		else {
-			// Avanzamos el puntero a la posición indicada
 			$this->recordSet->Move($offset);
-			// Obtenemos la fila de la posición actual
 			$newRow = $this->recordSet->fields;
 			$this->currentIndex = $offset + 1;
 		}
-		// Construimos el objeto a partir de la tupla
+		// Create the object from the tuple $newRow
 		$model = $this->model;
 		$newObject = $model::factoryFromRow($newRow);
 
-		// Devolvemos el nuevo objeto
+		// Return that object
 		return $newObject;
 	}
 
 	
 	public function offsetSet($offset, $value) {
-		throw new \BadFunctionCallException("Los LuloQueries son de sólo lectura. Esta operación no se permite.");
+		throw new \BadFunctionCallException("Queries are read-only. Operation not allowed.");
 	}
 
 	
 	public function offsetUnset($offset) {
-		throw new \BadFunctionCallException("Los LuloQueries son de sólo lectura. Esta operación no se permite.");
+		throw new \BadFunctionCallException("Queries are read-only. Operation not allowed.");
 	}
 
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Interfaz de Iterator */
+	/* Iterator interface */
 
+	/**
+	 * Return current element.
+	 * @return object Element at current position.
+	 * 	 */
 	public function current() {
-		// Devuelve el elemento actual
 		return $this->offsetGet($this->currentIndex);
 	}
 
 	
+	/**
+	 * Return current position.
+	 * @return int Current position.
+	 * 	 */	
 	public function key() {
 		// Devuelve la posición actual
 		return $this->currentIndex;
 	}
 
 	
+	/**
+	 * Move foward.
+	 * 	 */	
 	public function next() {
-		// Avanza de posición
 		$this->recordSet->MoveNext();
 		$this->currentIndex++;
 	}
 
 	
+	/**
+	 * Move to the first position.
+	 * 	 */	
 	public function rewind() {
-		// Si no existe el recordset lo creamos.
+		// Init the recordset if needed.
 		$this->initRecordSet();
-		// Pone el contador otra vez en la posición inicial
+		// Move to first element
 		$this->recordSet->MoveFirst();
-		// El índice actual vuelve a ser el primero
+		// Current index is the first index
 		$this->currentIndex = 0;
 	}
 
+	
+	/**
+	 * Is current position valid?
+	 * @return boolean true if current position exists in Query, false otherwise.
+	 * 	 */	
 	public function valid() {
-		// Inicializamos el RecordSet si es necesario
+		// Init the recordset if needed.
 		$this->initRecordSet();
-		// Informa si el puntero es válido
+		// Is current position valid?
 		return ((!$this->recordSet->EOF) and $this->currentIndex < $this->recordSet->RecordCount() );
 	}
 
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Métodos de mágicos */
+	/* Magic methods */
 
 	/**
-	 * Método mágico que se llama cuando se llama al objeto como si se
-	 * tratase de una función.
+	 * Magic method that is called when the Query object is treated like
+	 * a function
 	 * 
-	 * Devuelve un objeto del LuloQuery.
+	 * Return the object at the $index position.
 	 * 
-	 * @param int $index Índice del objeto a devolver.
-	 * @return object Objeto en la posición $index.
+	 * @param int $index Index of the object that will be returned.
+	 * @return object Object at position $index in the Query.
 	 * 
 	 * */
 	public function __invoke($index) {
