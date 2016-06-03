@@ -312,7 +312,7 @@ trait Init {
 		}
 		// Every model can be related to itself
 		$relatedModels = array_merge(static::$RELATED_MODELS, [static::CLASS_NAME]);
-		print "Relaciones de ".static::CLASS_NAME."<br>";
+		//print "Relaciones de ".static::CLASS_NAME."<br>";
 		// For each related model
 		foreach($relatedModels as $model){
 			// For each relationship, a new inverse relationship is created
