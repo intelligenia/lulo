@@ -327,35 +327,30 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		return $this;
 	}
 	
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Agrupación de elementos */
+	/* Aggregation */
 
 	/**
-	 * Ejecuta una agregación junto a los campos que se quieren seleccionar.
-	 * Nótese que si lo que quieres hacer es obtener un valor numérico de la tabla, ejecuta select_aggregate.
 	 * 
-	 * @param array Array con las agregaciones de la siguiente forma, <función de agregación> => [campo1, campo2, ...]
-	 * @return string SQL con la sentencia de la agregación.
+	 * Execute an aggregation for some fields.
+	 * 
+	 * If you want to get a number for this table, execute select_aggregate.
+	 * 
+	 * @param array Array with aggregations with this form, <aggregate function> => [field1, field2, ...]
 	 * 	 */
 	protected function init_aggregations($aggregations) {
 		$model = $this->model;
-		$db = $this->db;
 
-		// Borramos las agregaciones que se hubieran hecho antes,
-		// las agregaciones no se han de acumular
+		// Deletion of former aggregations
 		$this->aggregations = [];
 		$this->has_aggregation_group_by = false;
 		
-		// Comprobaciones de que las funciones de agregación y sus campos
-		// son correctos y si tiene campos en al menos una agregación
+		// Check if aggregate functions and fields are right
 		$hasFieldsInAnyAggregation = false;
 		foreach ($aggregations as $aggregation) {
-			// Comprobamos si tiene campos en alguna agregación
 			if (!is_null($aggregation->fields) and count($aggregation->fields) > 0) {
 				$hasFieldsInAnyAggregation = true;
 			}
-			// Le indicamos a la agregación el modelo sobre el que se va a ejecutar
+			// Model that will be used by the aggregation
 			$aggregation->init($model);
 		}
 
@@ -365,11 +360,12 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
 	
 	/**
-	 * Ejecuta una agregación junto a los campos que se quieren seleccionar.
-	 * Nótese que si lo que quieres hacer es obtener un valor numérico de la tabla, ejecuta select_aggregate.
+	 * Execute an aggregation for some fields.
 	 * 
-	 * @param array Array con las agregaciones de la siguiente forma, <función de agregación> => [campo1, campo2, ...]
-	 * @return mixed Resultado de realizar la agregación
+	 * If you want to get a number for this table, execute select_aggregate.
+	 * 
+	 * @param array Array with aggregations with this form, <aggregate function> => [field1, field2, ...]
+	 * @return object Reference to $this to enable chaining of methods.
 	 * 	 */
 	public function aggregate($aggregations) {
 		$this->init_aggregations($aggregations);
@@ -378,10 +374,10 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
 	
 	/**
-	 * Selecciona sólo una función de agregación
+	 * Select a lone aggregation function.
 	 * 
-	 * @param array Array con las agregaciones de la siguiente forma, <función de agregación> => [campo1, campo2, ...]
-	 * @return mixed Resultado de realizar la agregación
+	 * @param array Array with aggregations with this form, <aggregate function> => [field1, field2, ...]
+	 * @return mixed Results of applying the aggregation.
 	 * */
 	public function select_aggregate($aggregations) {
 		$sql = $this->select(null)->aggregate($aggregations)->sql();
