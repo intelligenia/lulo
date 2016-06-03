@@ -33,19 +33,19 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 	/** Fields to select. By default, all that belongs to model $model */
 	public $selected_fields = null;
 
-	/** Almacén de modelos relacionados en función a la consulta realizada */
+	/** Related models needed for this query */
 	public $related_models = [];
 
-	/** Almacén de tablas relacionadas en función a la consulta realizada que han de estar presentes en el JOIN */
+	/** Related tables needed for this query */
 	public $related_tables = [];
 	
-	/** Almacén con las relaciones que han de estar presentes en el JOIN */
+	/** Relationships needed for this query */
 	public $relationships = [];
 
-	/** Agregaciones en la consulta */
+	/** Aggregations for this query */
 	public $aggregations = [];
 
-	/** Indica si tiene cláusula GROUP BY o no */
+	/** Has GROUP BY? */
 	public $has_group_by = false;
 
 	/**
@@ -625,17 +625,17 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
 	
 	/**
-	 * Elimina los objetos según el filtro de la consulta.
+	 * Delete the objects that comply the filter of this query.
 	 * */
 	public function delete() {
 
-		// Base de datos sobre la que se van a hacer las consultas
+		// Database
 		$db = $this->db;
 
-		// Obtención del código SQL de eliminación
+		// SQL code for deletion
 		$sql = $this->sql_for_delete();
 
-		// Ejecutamos el SQL de eliminación
+		// Deletion execution
 		return $db::execute($sql);
 	}
 
