@@ -755,9 +755,10 @@ abstract class ROModel{
 
 	
 	/**
-	 * Informa, a nivel de objeto si existe un atributo dinámico.
-	 * @param string $attributeName Nombre del atributo dinámico a comprobar si existe.
-	 * @return boolean Booleano informando sobre si existe el atributo dinámico o no en este objeto.
+	 * Check if this object has a dynamic attribute.
+	 * @param string $attributeName Dynamic attribute name.
+	 * @return boolean True if $attributeName is the name of a dynamic attribute
+	 * in this object, false otherwise.
 	 */
 	public function hasDynamicAttribute($attributeName){
 		return array_key_exists($attributeName, $this->dynamicAttributes);
@@ -765,9 +766,11 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Informa, a nivel de objeto si existe un atributo (estándar o dinámico).
-	 * @param string $attributeName Nombre del atributo a comprobar si existe.
-	 * @return boolean Booleano informando sobre si existe el atributo (estándar o dinámico) o no en este objeto.
+	 * Check if this object has a attribute.
+	 * It does not matter if the attribute is a dynamic or standard attribute.
+	 * @param string $attributeName Attribute name.
+	 * @return boolean True if $attributeName is the name of a dynamic
+	 * or standard attribute in this object, false otherwise.
 	 */
 	public function hasAttribute($attributeName){
 		return ( static::metaHasAttribute($attributeName) or $this->hasDynamicAttribute($attributeName) );
@@ -775,53 +778,41 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Asciende un atributo convirtiéndolo en un objeto.
-	 * @param string $attributeName campo que se asciende.
-	 * @param array $extraParemeters Parámetros extra de la conversión a objeto.
-	 * @return object Objecto que representa al atributo.
+	 * Ascends an attribute converting it to an object.
+	 * @param string $attributeName Attribute to ascend.
+	 * @param array $extraParemeters Extra paramenters of the ascendancy.
+	 * @return object Object that represents this $attributeName value.
 	 * */
 	public function a($attributeName, $extraParemeters=null){
-		// Modelo actual
 		$model = static::CLASS_NAME;
 		
-		// Si no existe el atributo como atributo estándar, será un atributo
-		// dinámico. Si no existe tampoco como atributo dinámico, entonces,
-		// lanzamos una excepción
+		// Check if this attribute exists as a dynamic attribute
 		if(!isset($model::$ATTRIBUTES[$attributeName])){
 			if($this->hasDynamicAttribute($attributeName)){
 				return $this->$attributeName;
 			}
-			// No existe el atributo dinámico, devolvemos una excepción
+			// It does not exist as a dynamic attribute, throw exception
 			$strPk = $this->getStrPk();
-			throw new \UnexpectedValueException("El atributo {$attributeName} no existe en el objeto {$strPk} del modelo {$model}");
+			throw new \UnexpectedValueException("{$attributeName} does not exist in object {$strPk} of model {$model}");
 		}
 		
-		// Propiedades del atributo
+		// Attribute properties
 		$attributeProperties = $model::$ATTRIBUTES[$attributeName];
 		
-		// Si el atributo no tiene subtipo, simplemente devolvemos
-		// su valor simple
+		// Subtype is what helps us identify how to ascend the attribute
+		// if attribute metadata does not have subtype is a common attribute
+		// that couldn't be ascended
 		if(!isset($attributeProperties["subtype"])){
 			return $this->$attributeName;
 		}
 		
-		// Para cada uno de los subtipos aceptados, ascendemos el atributo a la
-		// clase adecuada según el subtipo
+		// According to its subtype, the attribute is ascended if possible
 		$subtype = $attributeProperties["subtype"];
 		if($subtype == "date" || $subtype == "datetime" || $subtype == "time"){
 			return new \DateTime($this->$attributeName);
 		}
+		// Otherwise, returns the value of the attribute
 		return $this->$attributeName;
-	}
-	
-	/**
-	 * Asciende un atributo convirtiéndolo en un objeto. Sobrecarga del método "a".
-	 * @param string $attributeName campo que se asciende.
-	 * @param array $extraParemeters Parámetros extra de la conversión a objeto.
-	 * @return object Objecto que representa al atributo.
-	 * */	
-	public function getObjAttr($attributeName, $extraParemeters=null){
-		return $this->a($attributeName, $extraParemeters);
 	}
 	
 }
