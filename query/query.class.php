@@ -156,45 +156,36 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		return $this;
 	}
 	
-	/* END of Private API */
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
 	/* Public API */
 
 	/**
-	 * Construye un LuloQuery para un modelo determinado.
-	 * @param string $model Modelo al que se le quiere hacer una consulta.
+	 * Construct a Query for a model
+	 * @param string $model Model that will be queried.
 	 * */
 	public function __construct($model) {
-		// Se usa el mismo conector de base de datos que el que tuviera
-		// el modelo que se va a consultar
+		// Using the same database connector than the model uses
 		$this->db = $model::DB;
-		// Modelo a consultar
+		// Model to query
 		$this->model = $model;
-		// Tabla del modelo (tabla principal)
+		// Model table
 		$this->model_table = $model::getTableName();
+		
 		$this->filters = [];
-		
 		$this->relationships = [];
-		
 		$this->order = null;
 		$this->limit = null;
 		
-		// Por defecto, se seleccionan los cambos seleccionables del modelo
-		// es decir, todos aquellos que no sean BLOBs
+		// All non-blob model fields are selected
 		$selectableFields = $model::metaGetSelectableAttributes();
 		$this->select($selectableFields);
 	}
 
 	
 	/**
-	 * Permite seleccionar una serie de campos determinados.
+	 * Allo selecting only some fields.
 	 * 
-	 * @param array $fields Array con los campos que se han de seleccionar.
-	 * @return object Referencia a este objeto (this).
+	 * @param array $fields Array with the names of the fields to select.
+	 * @return object Reference to $this to enable chaining of methods.
 	 * */
 	protected function select($fields) {
 		$this->selected_fields = $fields;
@@ -203,73 +194,71 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
 	
 	/**
-	 * Operación FILTER. Filtra los resultados en función de las condiciones
-	 * que se incluyan en los parámetros.
+	 * FILTER operation. Filter the results based on conditions that are included
+	 * as paremeters.
 	 * 
-	 * Las condiciones están en Forma Normal Disyuntiva. Esto es,
-	 * los parámetros de esta operación son condiciones disyuntivas (OR)
-	 * que se unirán con AND la conjunción global.
+	 * Conditions are in Disjunctive Normal Form. That is, parameters for this
+	 * operation are OR conditions that will be joined by AND operators.
 	 * 
-	 * Ejemplos:
+	 * Examples:
 	 * - filter(["A"=>1, "B"=>2], ["B"=>3, "C"=>4]):
 	 *     (A=1 AND B=2) OR (B=3 AND C=4)
 	 * - filter(["A"=>1], ["B"=>3, "C"=>4])->filter(["X"=>2, "Y"=>3], ["W"=>5]):
 	 *     ( (A=1) OR (B=3 AND C=4) ) AND ( (X=2 AND Y=3) OR W=5 )
 	 * 
-	 * @return object Referencia a este objeto (this).
+	 * @return object Reference to $this to enable chaining of methods.
 	 * */
 	public function filter() {
-		// Si no tiene argumentos, no añadimos nuevas condiciones y devolvemos $this
+		// If there is no arguments, return $this
 		$numArgs = func_num_args();
-		if($numArgs == 0){ return $this; }
+		if($numArgs == 0){
+			return $this;
+		}
 		
-		// Llamada del filtro a partir de parámetros pasados como un único array
+		// If only a lone array is passed use it as parameters
 		$firstArgument = func_get_arg(0);
 		if ($numArgs == 1 and isset($firstArgument[0]) and is_array($firstArgument[0])) {
 			return $this->_f(true, $firstArgument);
 		}
 
-		// Caso general, el filtro se lo hemos introducido como argumentos
-		// a este método
+		// General case of filtering: arguments are conditions
 		return $this->_f(true, func_get_args());
 	}
 
 	
 	/**
-	 * Operación EXCLUDE.
+	 * EXCLUDE operations.
 	 * 
-	 * Las condiciones están en Forma Normal Disyuntiva. Esto es,
-	 * los parámetros de esta operación son condiciones disyuntivas (OR)
-	 * que se unirán con AND la conjunción global.
+	 * Conditions are in Disjunctive Normal Form. That is, parameters for this
+	 * operation are OR conditions that will be joined by AND operators.
 	 * 
-	 * Ejemplos:
+	 * Examples:
 	 * - filter(["A"=>1, "B"=>2], ["B"=>3, "C"=>4])->exclude(["X"=>5, "Y"=>6]):
 	 *     ((A=1 AND B=2) OR (B=3 AND C=4)) AND NOT(X=5 AND Y=6)
 	 *
-	 * @return object Referencia a este objeto (this).
+	 * @return object Reference to $this to enable chaining of methods.
 	 * */
 	public function exclude() {
-		// Si no tiene argumentos, no añadimos nuevas condiciones y devolvemos $this
+		// If there is no arguments, return $this
 		$numArgs = func_num_args();
 		if($numArgs == 0){ return $this; }
 		
-		// Llamada del filtro a partir de parámetros pasados como un único array
+		// If only a lone array is passed use it as parameters
 		$firstArgument = func_get_arg(0);
 		if ($numArgs == 1 and isset($firstArgument[0]) and is_array($firstArgument[0])) {
 			return $this->_f(false, $firstArgument);
 		}
 
-		// Caso general, el filtro se lo hemos introducido como argumentos
-		// a este método
+		// General case of filtering: arguments are conditions
 		return $this->_f(false, func_get_args());
 	}
 
 	
 	/**
-	 * Aplica un límite a la consulta.
-	 * @param int $start Inicio del intervalo de objetos a obtener.
-	 * @param int $size Número de objetos a obtener. Si es null, se asume que $start es el tamaño.
-	 * @return object Referencia a este objeto (this).
+	 * Apply a limit to this query.
+	 * @param int $start Start position.
+	 * @param int $size Number of elements to get. If null, $start is the size.
+	 * @return object Reference to $this to enable chaining of methods.
 	 * */
 	public function limit($start, $size = null) {
 		if (is_null($size)) {
@@ -282,13 +271,13 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
 	
 	/**
-	 * Aplica un límite de 1 elemento a la consulta.
-	 * Lanza una excepción si el LuloQuery devuelve vacío.
+	 * Get the first element of the Query.
 	 * 
-	 * @return object Referencia al primer objeto del LuloQuery.
+	 * If there is no elements, throw an exception
+	 * 
+	 * @return object Reference to $this to enable chaining of methods.
 	 * */
 	public function get() {
-		// Si no tiene argumentos, no añadimos nuevas condiciones y devolvemos $this
 		$numArgs = func_num_args();
 		$results = null;
 		if($numArgs == 0){
@@ -297,52 +286,46 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 			$results = $this->filter(func_get_args())->limit(1);
 		}
 		
-		// Comprobamos si el LuloQuery está vacío o no.
-		// Si está vacío el LuloQuery devolvemos una excepción.
+		// Return the first element of the query, if there is no elements
+		// an OutOfRangeException exception is raised
 		try{
 			return $results[0];
 		}catch(\OutOfRangeException $e){
-			throw new \OutOfRangeException("Error en get. No hay un objeto que concuerde con la selección");
+			throw new \OutOfRangeException("Unable to get object in this query. There are no objects that comply with your filter.");
 		}
 	}
 
 	
 	/**
-	 * Aplica distinct a la consulta.
-	 * @param bool $distinct Indica si la consulta ha de comprobar unicidad de elementos (true) o no comprobarla (false).
-	 * @return object Referencia a este objeto (this).
+	 * Should DISTINCT be applied to the query?
+	 * @param bool $distinct If true, a SELECT DISTINCT will be executed.
+	 * If false, a SELECT will be executed.
+	 * @return object Reference to $this to enable chaining of methods.
 	 * */
 	public function distinct($distinct = true) {
 		$this->distinct = $distinct;
 	}
 
-	
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* ORDEN */
+	/* ORDER */
 
 	/**
-	 * Aplica un orden a la consulta.
-	 * @param array $order orden con formato: ["<field_1>"=>"ASC"|"DESC", ..., "<field_N>"=>"ASC"|"DESC"]
+	 * Apply an order to the query
+	 * @param array $order Order of the form: ["<field_1>"=>"ASC"|"DESC", ..., "<field_N>"=>"ASC"|"DESC"]
 	 * 
-	 * Ejemplos:
+	 * Examples:
 	 * - ["users::last_name"=>"ASC", "users::first_name"=>"ASC", "id"=>"DESC"]
 	 * - ["creation_datetime"=>"ASC", "users::last_name"=>"ASC"]
 	 * 
-	 * @return object Referencia a este objeto (this).
+	 * @return object Reference to $this to enable chaining of methods.
 	 * */
 	public function order($order) {
 		$model = $this->model;
-		// Para cada campo de orden, lo añadimos como objeto OrderField
+		// For each order field, it is added as an OrderField object
 		foreach ($order as $field => $fieldOrder) {
 			$this->order[] = new \lulo\query\OrderField($this, $model, $field, $fieldOrder);
 		}
 		return $this;
 	}
-	
-	/* FIN DEL ORDEN */
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
 	
 	/*	 * *************************************************************** */
 	/*	 * *************************************************************** */
@@ -407,210 +390,180 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		return $results["fields"];
 	}
 
-	/* FIN DE LA AGRUPACIÓN */
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
 	/* SELECT FOR UPDATE */
 	
 	/**
-	 * Marca la consulta para ser ejecutada como un SELECT FOR UPDATE.
-	 * @return object Referencia a $this para poder encadenarlo con otros métodos.
+	 * Mark this query to be executed with SELECT FOR UPDATE.
+	 * @return object Reference to $this to enable chaining of methods.
 	 * 	 */
 	public function for_update(){
 		$this->for_update = true;
 		return $this;
 	}
 	
-	/* FIN DEL SELECT FOR UPDATE */
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Transacción */
+	/* Transaction */
 	
 	/**
-	 * Método que envuelve la operación en una transacción.
-	 * @return object Referencia a $this para poder encadenarlo con otros métodos.
+	 * Wrap operation in a transaction.
+	 * @return object Reference to $this to enable chaining of methods.
 	 * 	 */
 	public function trans(){
 		$this->is_transaction = true;
 		return $this;
 	}
 
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/** MÉTODOS QUE NO DEVUELVEN THIS * */
-	
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Cuenta de elementos */
+	/* Count and existence of elements */
 	
 	/**
-	 * Cuenta el número de elementos que hay en el Query,
+	 * Count number of elements in this query.
 	 * 
-	 * @return integer Número de elementos de esta consulta.
+	 * @return integer Number of elements of this query.
 	 * 	 */
 	public function count(){
-		// Si no existe el recordset lo creamos.
 		$this->initRecordSet();
 		return $this->recordSetSize;
 	}	
 	
 	
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Comprobación de si el modelo puede editarse o no */
+	/**
+	 * Check if exists any element in this query.
+	 * 
+	 * @return boolean true if exists any element in this query, false otherwise.
+	 * 	 */
+	public function exists(){
+		return ($this->count() > 0);
+	}	
+	
+	
+	/* Check if model can be written */
 
 	/**
-	 * Indica si el modelo es escribible o no.
+	 * Is the model writable?
 	 * 
-	 * Esto es, comprueba si el modelo tiene el método dbUpdate, que,
-	 * normalmente lo heredará de la clase RWModel.
-	 * 
-	 * @return boolean Informa si el modelo es escribible o no.
+	 * @return boolean true if model is writable, false otherwise.
 	 * 	 */
 	protected function modelIsWritable() {
-		// Comprobamos si la clase actual tiene implementado el método dbUpdate
+		// Check if model has method dbUpdate
 		$model = $this->model;
 		return method_exists($model, "dbUpdate");
 	}
 
 	
 	/**
-	 * Indica si el modelo es escribible o no.
-	 * 
-	 * Esto es, comprueba si el modelo tiene el método dbUpdate, que,
-	 * normalmente lo heredará de la clase RWModel y en caso de que no sea
-	 * escrible, lanza una excepción.
-	 * 
+	 * Is the model writable?
+	 * @return boolean true if model is writable, false otherwise.
 	 * 	 */
 	protected function assertModelIsWritable() {
 		if (!$this->modelIsWritable()) {
 			$model = $this->model;
-			throw new \Exception("El modelo {$model} no permite su escritura, sólo su lectura");
+			throw new \Exception("Model {$model} does not allow writing only reading");
 		}
 	}
 
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Actualización de elementos */
+	/* UPDATE */
 
 	/**
-	 * Prepara los campos de la actualización para evitar inyecciones SQL.
+	 * Clean fields for UPDATE.
 	 * 
-	 * @param array $fieldsToUpdate Campos a actualizar.
-	 * @return array Array con pares <campo de la tabla> => <nuevo valor> que se usará en la actualización.
+	 * The aim is avoid SQL injections.
+	 * 
+	 * @param array $fieldsToUpdate Fields of the update.
+	 * @return array Array of pairs <table attribute> => <new value> that will be used to update data.
 	 * */
 	protected function cleanFieldsToUpdate($fieldsToUpdate) {
 		$model = $this->model;
 		$db = $this->db;
 		
-		// Hash que contendrá los pares "campo" => <nuevo valor>
+		// Array that will contain "attribute" => <new value>
 		$_fieldsToUpdate = [];
 		foreach ($fieldsToUpdate as $field => $value) {
 			
-			// Si el campo que se ha pasado es una referencia a una columna
-			// (en forma de TupleValue)
+			// If it is a TupleValue and not a constant or variable, it
+			// references to the current value of the tuple.
 			if (is_object($value) and get_class($value)=="lulo\query\TupleValue") {
 				$column = $value->f();
-				// Si tenemos que dejarlo tal cual, así se queda
 				if($value->isRaw()){
 					$value = $column;
 				}
-				// Comprobamos si el modelo tiene esa columna como atributo
+				// Check model has $column attribute
 				elseif($model::metaHasAttribute($column)){
 					$escapedColumn = substr($db::qstr($column), 1, -1);
 					$value = "main_table.{$escapedColumn}";
 				}
-				// Si el modelo no tiene $column como atributo, damos un error
+				// Otherwise, throw exception
 				else{
-					throw new \Exception("'{$column}' no es un atributo del modelo {$model}");
+					throw new \Exception("'{$column}' is not an attribute of {$model}");
 				}				
 			}
-			// En caso que no sea una TupleValue, asumimos que el valor que se
-			// va a usar para actualizar es una cadena y por tanto sólo
-			// debemos escaparla
+			// If what we pass is a variable and not a reference to a field
+			// it has to be escaped
 			else {
 				$value = $db::qstr($value);
 			}
 			
-			// Añadimos el campo que vamos a actualizar al hash que vamos a
-			// aplicar como actualización
+			// Add the field to the fields to update with its new value
 			$_fieldsToUpdate[$field] = $value;
 		}
 		
-		// Devolvemos el hash con la actualización
+		// Updating array
 		return $_fieldsToUpdate;
 	}
 
 	
 	/**
-	 * Obtiene el SQL de la consulta de eliminación de objetos según el filtro de la consulta.
+	 * Get UPDATE statement SQL code.
 	 * 
-	 * @return string Código SQL de la consulta de eliminación.
+	 * @return string UPDATE statement SQL code.
 	 * */
 	public function sql_for_update($fieldsToUpdate) {
-		// Comprobamos que los campos son correctos y los escapamos
+		// Checking and escaping of fields
 		$cleanedFieldsToUpdate = $this->cleanFieldsToUpdate($fieldsToUpdate);
 
-		// Construimos la sentencia SQL de la actualización
+		// UPDATE statement
 		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/update/query.twig.sql");
 		$sql = $sqlT->render(["query" => $this, "fieldsToUpdate" => $cleanedFieldsToUpdate]);
 
-		// Obtención del código SQL para la actualización.
+		// Return of UPDATE statement SQL code
 		return $sql;
 	}
 
 	
 	/**
-	 * Actualiza todos los elementos del LuloQuery.
-	 * @param array $fieldsToUpdate Array con los datos de actualización.
+	 * Update statement
+	 * @param array $fieldsToUpdate Array that contains pairs <attribute>=><newValue>
+	 * to execute a update in the table of this model.
 	 * */
 	public function update($fieldsToUpdate) {
-		// Lo primero es comprobar que el modelo es escribible.
+		// Check if model is writable
 		$this->assertModelIsWritable();
 
-		// Base de datos sobre la que se ejecuta la consulta de UPDATE
+		// Database
 		$db = $this->db;
 
-		// Código SQL para la actualización
+		// UPDATE statement code
 		$sql = $this->sql_for_update($fieldsToUpdate);
 
-		// Ejecución del SQL de actualización
+		// Return UPDATE SQL code
 		return $db::execute($sql);
 	}
 
-	
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Eliminación de elementos */
+	/* Delete */
 
 	/**
-	 * Obtiene el SQL de la consulta de eliminación de objetos según el filtro de la consulta.
+	 * Get SQL code for DELETE statement.
 	 * 
-	 * @return string Código SQL de la consulta de eliminación.
+	 * @return string SQL code for DELETE statement.
 	 * */
 	public function sql_for_delete() {
-		// Lo primero es comprobar que el modelo es escribible.
+		// Check if model is writable
 		$this->assertModelIsWritable();
 
-		// Modelo que se va a consultar
+		// Destination model
 		$model = $this->model;
 
-		// Lo primero es añadir los modelos relacionados hijos que tienen
-		// eliminación en cascada
+		// Cascade deletion calculation for model $model
 		foreach ($model::metaGetRelationships() as $relationshipName => $relationship) {
-			// Se han de añadir aquellos modelos que son hijos de este modelo
-			// y que han sido marcados como que se han de eliminar en el caso
-			// de eliminación del modelo padre
-			// También tendremos que eliminar las tuplas de los tablas nexo
-			// para el caso de que haya eliminación en cascada
+			// Nexii tuples and children tuple deletion
 			if (
 				($relationship["type"] == "OneToMany" or $relationship["type"] == "ManyToMany") and
 				isset($relationship["on_master_deletion"]) and
@@ -620,11 +573,11 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 			}
 		}
 
-		// Generamos el SQL de la consulta
+		// SQL code generation
 		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/delete/query.twig.sql");
 		$sql = $sqlT->render(["query" => $this]);
 
-		// Devolvemos el código SQL de la consulta de eliminación
+		// Return DELETE statement SQL code
 		return $sql;
 	}
 
@@ -644,22 +597,21 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		return $db::execute($sql);
 	}
 
-	/*	 * *************************************************************** */
-	/*	 * *************************************************************** */
-	/* Generación SQL de la consulta */
+	/* SQL code or this query */
 
 	/**
-	 * Obtener código SQL de la consulta de selección.
+	 * Get SQL for SELECT statement.
+	 * @return string SELECT statement for this query.
 	 * 	 */
 	public function sql() {
-		// Si tiene agregationes, usamos un SQL 
 		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/select/query.twig.sql");
 		return $sqlT->render(["query" => $this]);
 	}
 
 	
 	/**
-	 * Obtener código SQL con formato bonito de la consulta de selección.
+	 * Get pretty SQL code for SELECT statement.
+	 * @return string SELECT statement for this query.
 	 * 	 */
 	public function prettySql() {
 		$sql = $this->sql();
