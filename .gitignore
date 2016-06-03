@@ -4,6 +4,7 @@ configuration.local.php
 .DS_Store
 
 dependences/vendor
+dependences/composer.phar
 
 
 nbproject
