@@ -158,28 +158,30 @@ abstract class ROModel{
 	////////////////////////// MAGIC METHODS ///////////////////////////////////
 	
 	/**
-	* Método mágico: devuelve lo que devuelva la llamada a un método que no se encuentra en el objeto actual pero sí en un objeto que está guardado en sus atributos dinámicos.
-	* @param string $methodName Nombre del método llamado.
-	* @param array $args Array con los atributos con los que se llama el método.
-	* @return mixed Valor devuelto por la llamada del método en el objeto guardado en el array de atributos dinámicos o null si no existe.
+	* Magic method: treat relationships as function.
+	* 
+	* E. g., if a relationship "tags" exists in this model, calling $this->tags
+	* will return a Query with the relationship "tags".
+	* 
+	* If there is no relationship called $methodName, this method will search
+	* through the attributes of this object until it find one that has a method
+	* called $methodName and will call it.
+	* 
+	* @param string $methodName Relationship name.
+	* @param array $args Array with arguments of this method.
+	* @return mixed Query with the realtionship if exists with the name $methodName
+	 * or the results of calling method $methodName of one object in a dynamic attribute.
 	*/
 	public function __call($methodName, $args){
-		// Carga de objetos relacionados
-		// Si el atributo que no existe es el nombre de una relación,
-		// estamos ante la carga de una entidad relacionada
-		// Cargamos un LuloQuery con los objetos relacionados
+		// If there is a relationship with name $methodName
 		if(array_key_exists($methodName, static::$RELATIONSHIPS)){
 			$relationship = static::$RELATIONSHIPS[$methodName];
 			$relatedModel = $relationship["model"];
 			$query = new \lulo\query\Query($relatedModel);
-			// Necesitamos pasarle un filtro con la relación convertida a formato
-			// de filtro LuloQuery
+			// Relationship condition converted to Query filter
 			$remoteFilter = $this->metaGetRelationshipAsLuloQueryFilter($relatedModel, $relationship["related_name"]);
-			// Filtro con la condición de relación remota
 			$relationshipQuery = $query->filter($remoteFilter);
-			// Si hay argumentos a la llamada, los argumentos (args) actúan como
-			// filtro adicional, ahorrándonos la inclusión de una llamada a
-			// "filter" y por tanto dejando el código mucho más limpio
+			// If there are some arguments, they act as a filter
 			if(count($args)>0){
 				if(is_array($args) and isset($args[0]) and is_array($args[0]) and isset($args[0][0])){
 					$args = $args[0];
@@ -189,8 +191,8 @@ abstract class ROModel{
 			return $relationshipQuery;
 		}
 
-		// La idea es comprobar si el método existe en algún objeto que está almacenado en el array de atributos dinámicos.
-		// Este método es sólo ~5 veces más lento que la llamada directa (La mejora del hardware SÍ es suficiente).
+		// Test if one of the dynamic objects has a method called $methodName
+		// in that case, call it.
 		if($this->dynamicAttributes!=null and count($this->dynamicAttributes)>0){
 			foreach($this->dynamicAttributes as $dynat){
 				if(is_object($dynat) and is_callable(array($dynat, $methodName))){
@@ -202,21 +204,25 @@ abstract class ROModel{
 			}
 		}
 		
-		// Avisamos de que ha ejecutado un método que no existe ni en él ni en sus atributos dinámicos
-		throw new \BadMethodCallException("El método {$methodName} no existe en la clase ".static::CLASS_NAME." ni en ninguno de sus atributos dinámicos.");
+		// Bad method call. It does not exist anywhere
+		throw new \BadMethodCallException("Method {$methodName} does not exist in ".static::CLASS_NAME." nor in any of its dynamic attributes.");
 	}
 	
 	
 	/**
-	* Método mágico: comprueba si está asignado el atributo en tiempo de ejecución.
-	* @param string $name Nombre del atributo.
-	* @return boolean true si está asignado como atributo dinámico, false en otro caso (comportamiento de isset).
+	* Test if attribute exists.
+	* 
+	* NOTE: isset($this->attr) returns true although $this->attr = null;
+	* 
+	* @param string $name Attribute name.
+	* @return boolean true if $name is the name of a standard or dynamic attribute. False otherwise.
 	*/
 	public function __isset($name){
-		// Si está entre los atributos normales, se establece ese valor
+		// If is a standard attribute, check if exists
 		if(static::metaHasAttribute($name)){
 			return array_key_exists($name, $this->attributeValues);
 		}
+		// If is a dynamic attribute, check if exists
 		if(array_key_exists($name, $this->dynamicAttributes)){
 			return array_key_exists($name, $this->dynamicAttributes);
 		}
@@ -225,16 +231,16 @@ abstract class ROModel{
 	
 	
 	/**
-	* Método mágico: devuelve un atributo asignado en tiempo de ejecución.
-	* @param string $name Nombre del atributo.
-	* @return mixed Valor del atributo.
+	* Return attribute value.
+	* @param string $name Attribute name.
+	* @return mixed Attribute value
 	*/
 	public function __get($name){
-		// Si está entre los atributos normales, se devuelve
+		// If is a standard attribute, return it
 		if(array_key_exists($name, $this->attributeValues)){
 			return $this->attributeValues[$name];
 		}
-		// Si está entre los atributos dinámicos, se devuelve
+		// If is a dynamic attribute, return it
 		if(array_key_exists($name, $this->dynamicAttributes)){
 			return $this->dynamicAttributes[$name];
 		}
@@ -243,14 +249,14 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Comprueba si puede editar un atributo determinado.
-	 * @param string $attribute Nombre del atributo que se desea comprobar si se tiene acceso.
-	 * @return boolean True si se tiene acceso desde fuera, false en otro caso.
+	 * Test if one attribute is editable
+	 * @param string $attribute Attribute name.
+	 * @return boolean True if is editable, false otherwise.
 	 * */
 	protected static function canEditAttribute($attribute){
 		return (
 			!isset(static::$ATTRIBUTES[$attribute]["access"]) or (
-				// Comprueba si el acceso es de escritura también
+				// Access permissions
 				(static::$ATTRIBUTES[$attribute]["access"]=="rw" or static::$ATTRIBUTES[$attribute]["access"]=="writable")
 			)
 		);
@@ -258,9 +264,9 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Informa si la llamada al método se ha producido desde una de las
-	 * clases de Lulo o desde la misma clase principal.
-	 * @return boolean true si la llamada ha sido desde la clase principal o una clase Lulo, false en otro caso.
+	 * Inform if edition of attribute has been made from one of Lulo classes or
+	 * from the outside
+	 * @return boolean true if call was made from inside, false otherwise.
 	 * */
 	protected static function attributeEditionIsCalledFromClassScope(){
 		$backtrace = debug_backtrace(false, 4);
@@ -282,33 +288,30 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Comprueba si se puede editar un atributo llamado mediante el
-	 * método mágico __set o __unset.
-	 * en caso contrario, lanza una excepción
-	 * @param string $attribute Nombre del atributo que se desea comprobar si se tiene acceso.
+	 * Test if attribute is editable.
+	 * NOTE: thrown exception if attribute is not editable.
+	 * @param string $attribute Attribute name to check access.
 	 * */
 	protected static function assertAttributeEdition($attribute){
-		// Comprobamos si puede editar el atributo en función del
-		// acceso definido por el desarrollador
+		// Depending on attribute privilege level access, check it
 		if(!static::canEditAttribute($attribute) and !static::attributeEditionIsCalledFromClassScope()){
-			throw new \Exception("No se tiene acceso de escritura para el atributo {$attribute} en ".static::CLASS_NAME.".");
+			throw new \Exception("Edition not allowed for {$attribute} in ".static::CLASS_NAME.".");
 		}
 	}
 	
 	
 	/**
-	* Método mágico: asigna un atributo dinámico en tiempo de ejecución.
-	* @param string $attribute Nombre del atributo.
-	* @param string $value Valor del atributo.
+	* Set an attribute.
+	* @param string $attribute Attribute name.
+	* @param string $value Attribute value.
 	*/
 	public function __set($attribute, $value){
-		// Si está entre los atributos normales, se establece ese valor
+		// If is an standard attribute, check if is editable and edit it
 		if(array_key_exists($attribute, static::$ATTRIBUTES)){
-			// Aseguramos que puede editarse el atributo
 			static::assertAttributeEdition($attribute);
-			// Edición del atributo
 			$this->attributeValues[$attribute] = $value;
-		// Si no existe en los atributos, lo mete como atributo dinámico
+		
+		// If is not an standard attribute, assign it as a dynamic attribute
 		}else{
 			$this->dynamicAttributes[$attribute] = $value;
 		}
@@ -316,16 +319,16 @@ abstract class ROModel{
 	
 	
 	/**
-	* Método mágico: ejecuta unset sobre un atributo asignado en tiempo de ejecución.
-	* @param $attribute Nombre del atributo.
+	* Unset an attribute
+	* @param $attribute Attribute name.
 	*/
 	public function __unset($attribute){
-		// Si está entre los atributos normales, se establece ese valor
+		// If is an standard attribute, check if is editable and unset it
 		if(array_key_exists($attribute, $this->attributeValues)){
-			// Aseguramos que puede editarse el atributo
 			static::assertAttributeEdition($attribute);
-			// Edición (unset) del atributo
 			unset($this->attributeValues[$attribute]);
+		
+		// Unset the dynamic attribute with this name	
 		}else{
 			unset($this->dynamicAttributes[$attribute]);
 		}
@@ -333,9 +336,11 @@ abstract class ROModel{
 	
 	
 	/**
-	* Devuelve el atributo cuyo nombre se le pasa como parámetro al método.
-	* @param string $name Nombre del atributo.
-	* @return mixed|null Atributo $name del objeto.
+	* Return attribute value.
+	* Alias of magic method __get.
+	* 
+	* @param string $name Attribute name.
+	* @return mixed Attribute value
 	*/
 	public function getAttribute($name){
 		return $this->__get($name);
@@ -343,16 +348,16 @@ abstract class ROModel{
 	
 	
 	/**
-	* Devuelve los atributos cuyos nombres se les pasan como parámetro al método.
-	* @param array $names Array con los nombres de los atributos a devolver.
-	* @return array Atributos $names del objeto.
+	* Return several attribute values.
+	* 
+	* @param array $names Array with the attributes to return.
+	* @return array Array of the form <attribute>=><value> for all attributes in $names.
 	*/
 	public function getAttributes($names){
 		if(is_string($names)){
 			$names = explode('|', $names);
 		}
-		// Para cada atributo que hemos pasado como parámetro,
-		// le asignamos el valor que tenga en el objeto y lo devolvemos
+		// Get the value of each attribute
 		$selectedAttributes = array();
 		foreach($names as $name){
 			$selectedAttributes[$name] = $this->$name;
@@ -362,8 +367,8 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Devuelve un array con los atributos que no son blobs.
-	 * @return array Atributos que no son de tipo blob.
+	 * Return an array with the values of the attributes that are not blobs.
+	 * @return array Array of the form <attribute>=><value> for all non-blob attributes.
 	 * */
 	public function getNonBlobAttributes(){
 		$attributeMetadata = static::initAttributesMetaInformation();
@@ -373,19 +378,19 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Devuelve la clave primaria de este objeto como un hash.
-	 * @return array Array de par atributo de clave primaria y valor.
+	 * Return primary key as a array of values.
+	 * @return array Array of the form <attribute>=><value> for all attributes that form the primary key.
 	 * */
 	public function getPk(){
 		return $this->getAttributes(static::$PK_ATTRIBUTES);
 	}
+
 	
-	/// Atributos heredados de los padres
 	/**
-	* Invocación de disparadores de la instancia.
-	* @param $name Nombre del disparador a llamar.
-	* @param $data Datos extra que se le pasan al disparador.
-	* @return mixed true si el disparador se ha ejecutado con éxito, false en otro caso. Null si no se ejecutó el disparador.
+	* Call of the trigger
+	* @param $name Trigger name.
+	* @param $data Extra data for the trigger.
+	* @return mixed true if trigger was executed without problems, false otherwise. Null if trigger was not executed.
 	*/
 	protected function callTrigger($name, $data=null){
 		$tname = "trigger".ucfirst($name);
