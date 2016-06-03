@@ -5,7 +5,7 @@
  */
 
 define("LULO_DIR", __DIR__);
-define("PARENT_LULO_DIR", __DIR__ . "/lib");
+define("PARENT_LULO_DIR", __DIR__ . "/..");
 
 define("LULO_DIR__CONTAINERS", LULO_DIR."/containers");
 define("LULO_DIR__DB", LULO_DIR."/db");
