@@ -55,8 +55,18 @@ FROM {{query.table}} AS main_table
 
 {% block where %}
 {# Conditions #}
-{% if query.filters %}
+{% if query.filters or query.raw_filter %}
 WHERE (
+    {% if query.raw_filter %}
+    (
+        {{query.raw_filter|raw}}
+    )
+    {% endif %}
+    {% if query.raw_filter and query.filters %}
+        AND
+    {% endif %}
+    {% if query.filters %}
+        (
 	{% for filter in query.filters %}
 		(
 			{% set firstIteration = loop.first %}
@@ -80,6 +90,8 @@ WHERE (
 		)
 		{% if not loop.last %}AND{% endif %} 
 	{% endfor %}
+       )
+    {% endif %}
 )
 {% endif %}
 {% endblock where %}

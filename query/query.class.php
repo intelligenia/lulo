@@ -58,6 +58,11 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 	 * A list of objects ConditionConjunction.
 	 */
 	public $filters = [];
+	
+	/**
+	 * Raw filter. That is a string with a condition in plain SQL.
+	 * 	 */
+	public $raw_filter = null;
 
 	/** Order of the returned objects */
 	public $order = null;
@@ -324,6 +329,13 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		foreach ($order as $field => $fieldOrder) {
 			$this->order[] = new \lulo\query\OrderField($this, $model, $field, $fieldOrder);
 		}
+		return $this;
+	}
+	
+	/* Raw filter SQL code */
+	
+	public function raw_filter($sql_condition){
+		$this->raw_filter = $sql_condition;
 		return $this;
 	}
 	

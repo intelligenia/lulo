@@ -89,6 +89,11 @@ trait Load {
 			$rs = $db::getAllAsRecordSet(static::getTableName(), $columnsStr, $finalCondition, $order, $limit);
 			return new QueryResult($rs, get_called_class());
 		
+		}elseif($container == "query"){
+			$raw_filter = $db::makeWhereCondition($finalCondition, "main_table");
+			print $raw_filter;
+			return static::objects()->raw_filter($raw_filter);
+			
 		}elseif($container == "collection"){
 			$rows = $db::getAll(static::getTableName(), $columnsStr, $finalCondition, $order, $limit);
 			// If there is no objects, return an empty collection
