@@ -47,12 +47,21 @@ trait Save {
 	protected function _dbSaveOldObject($blobs=[]){
 		$db = static::DB;
 		
+                // id autoincrementable attribute
+                $id_attribute_name = static::ID_ATTRIBUTE_NAME;
+                
 		// Primary key
 		$pkValue = $this->getPk();
 		
 		// Get non-blob attributes and their values
 		$values = $this->getNonBlobAttributes();
 		
+                // Delete of id attribute. We assume the DB engine assigns it with a
+		// legal value
+		if(array_key_exists($id_attribute_name, $values)){
+			unset($values[$id_attribute_name]);
+		}
+                
 		// For each blob we read it and prepara for the insertion
 		foreach($blobs as $blobName => $blobObject){
 			static::_dbReadBlob($blobName, $blobObject, $values);
