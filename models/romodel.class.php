@@ -337,13 +337,26 @@ abstract class ROModel{
 	
 	/**
 	* Return attribute value.
-	* Alias of magic method __get.
 	* 
 	* @param string $name Attribute name.
-	* @return mixed Attribute value
+	* @param function $modifier Function to be applied to the value of the attribute. If null, it is ignored.
+	* @return mixed Attribute value (posibilly modified by $modifier).
 	*/
-	public function getAttribute($name){
-		return $this->__get($name);
+	public function getAttribute($name, $modifier=null){
+		$value = $this->__get($name);
+		if(is_null($modifier)){ return $value; }
+		return $modifier($value);
+	}
+	
+	
+	/**
+	* Return the value of an attribute.
+	* Alias of getAttribute.
+	* @param function $modifier Function that will be applied to attribute.
+	* @return mixed Value of this attibute.
+	*/ 
+	public function getAttr($attribute, $modifier=null){
+		return $this->getAttribute($attribute, $modifier);
 	}
 	
 	
@@ -405,43 +418,40 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Validación implícita de un objeto.
-	 * @param array $attributes Array con los atributos de objeto.
-	 * @return array Array con los atributos de objeto preparados para crear el objeto.
+	 * Implicit validation of an object.
+	 * @param array $attributes Object attibutes as an array.
+	 * @return array Array with the attributes ready to create a new object of this model.
 	 * */
 	public static function cleanObjectAttributes($attributes){
-		// Lo primero que hace este método es asignarle a los atributos
-		// que no existen en el array que sea pasa como parámetro
-		// sus valores por defecto
+		// Default value for each attribute that is not present
 		$definedAttributes = array_keys(static::$ATTRIBUTES);
 		foreach($definedAttributes as $definedAttribute){
 			if(!isset($attributes[$definedAttribute]) and isset(static::$ATTRIBUTES[$definedAttribute]["default"])){
 				$attributes[$definedAttribute] = static::$ATTRIBUTES[$definedAttribute]["default"];
 			}
 		}
-		// Este método deberá devolver los atributos validados y en caso
-		// de que un atributo tenga un valor erróneo,
-		// devolver una excepción siguiendo estas reglas.
-		// - InvalidArgumentException: si el atributo no es del tipo adecuado.
-		// - DomainException: si el valor para un atributo no es un valor legal.
+		// Rewrite this method and call the parent method, throwing
+		// - InvalidArgumentException: if attribute has not the right type.
+		// - DomainException: if the attribute value is not a legal value.
 		return $attributes;
 	}
 	
 	
 	/**
-	* Constructor por defecto a partir de un array de argumentos.
-	* Como la nueva forma de llamar a los arrays permite el uso de [],
-	* este constructor requiere un array con todos sus parámetros.
-	* @param array $attributes Cada uno de los atributos del objeto como un array.
-	* @param boolean $applyImplicitCleaning Indica si se ha de aplicar la validación y limpieza implícita del modelo.
+	* Default constructor.
+	* NOTE: require an array with all its attributes.
+	* @param array $attributes An array with all the attributes for this object.
+	* @param boolean $applyImplicitCleaning Should this input data be validated?
 	*/
 	public function __construct($attributes, $applyImplicitCleaning=true){
-		// Si se aplica la limpieza implícita de objeto, limpiamos
-		// y validamos los atributos de objeto
+		// If the implicit cleaning of input attribute values is needed
+		// apply it 
 		if($applyImplicitCleaning){
 			$attributes = static::cleanObjectAttributes($attributes);
 		}
-		// Asignación de cada uno de los atributos
+		// Attribute assignement. Depending on if is a known attribute
+		// or an unknown attribute, it will go to an standard attribute or
+		// a dynamic attribute (resp.).
 		foreach($attributes as $argumentName=>$value){
 			if(isset(static::$ATTRIBUTES[$argumentName])){
 				$this->attributeValues[$argumentName] = $value;
@@ -454,14 +464,12 @@ abstract class ROModel{
 	
 	
 	/**
-	* Fábrica desde una tupla
+	* Construct an object from a database tuple
 	*
-	* Los atributos extra que se pasen en $row y que no estén entre los atributos
-	* de instancia de esta clase (DIR_Sede), se crearán como atributos
-	* dinámicos en la instancia devuelta
-	*
-	* @param array $row Array con los datos extraídos de una tupla de la BD
-	* @return DIR_Sede Objeto inicializado con los datos del array
+	* This method do not apply implicit cleaning to input data ($row).
+	* 
+	* @param array $row Database tuple as array.
+	* @return object Model object initialized with the $row data.
 	*
 	*/
 	public static function factoryFromRow($row){
@@ -473,9 +481,13 @@ abstract class ROModel{
 	
 	
 	/**
-	* Crea un objeto a partir de un array.
-	* @param array $data Array con los datos del objeto como pares atributo=>valor.
-	* @return Objeto actual construido a partir de un array.
+	* Construct an object from an array.
+	* 
+	* This method applies implicit cleaning to input data ($data).
+	* 
+	* @param array data Array with data needed to create an object of this model.
+	* @return object Model object initialized with the $data data.
+	*
 	*/
 	public static function factoryFromArray($data){
 		$currentClass = get_called_class();
@@ -486,9 +498,10 @@ abstract class ROModel{
 	
 	
 	/**
-	* Fábrica desde tuplas
-	* @param array $rows Array de array con tuplas extraídas de la BD
-	* @return array Array de objetos DIR_Sede inicializados con los datos del array
+	* Create an array of objects from an array of database tuples.
+	* 
+	* @param array $rows Array of database tuples (array of arrays)
+	* @return array Model objects array.
 .	*/
 	public static function arrayFactoryFromRows($rows){
 		$res = array();
@@ -500,21 +513,21 @@ abstract class ROModel{
 	
 	
 	/**
-	* Informa si los dos objetos son iguales, esto es, si contiene datos con los mismos datos.
-	* @param object $other Objeto con el que se desea comparar la igualdad (que no identidad).
-	* @return boolean true si los objetos comparados contienen los mismos datos, false en otro caso.
+	* Check if two objects of this model are equal. That is, if they
+	* contain the same data.
+	* 
+	* @param object $other Object to check.
+	* @return boolean true if both object contain the same data, false otherwise.
 	*/
 	public function equals($other){
-		// Lo primero es comprobar que el nombre
-		// de la clase de ambos objetos es el mismo
+		// If the objects have different classes, they can't be equal
 		if(static::CLASS_NAME != get_class($other)){
 			return false;
 		}
-		// Para cada uno de los atributos, deben tener el mismo valor
+		// For each attribute check if their values are equal
 		$attributeNames = static::metaGetAttributeNames();
 		foreach($attributeNames as $attributeName){
-			// Sólo comprobamos si los valores para los campos que no sean blob
-			// son iguales
+			// Only non-blob attributes are checked
 			if(static::$ATTRIBUTES[$attributeName]["type"]!="blob" and $this->$attributeNames != $other->$attributeName){
 				return false;
 			}
@@ -524,8 +537,8 @@ abstract class ROModel{
 	
 	
 	/**
-	* Devuelve los datos del objeto como array.
-	* @return array Array con los datos del objeto como pares atributo=>valor.
+	* Return current object attributes as an array.
+	* @return array Array with object data as a pair of <attribute>=><value>.
 	*/
 	public function getAsArray(){
 		$data = $this->attributeValues;
@@ -534,8 +547,9 @@ abstract class ROModel{
 	
 	
 	/**
-	* Devuelve los datos dinámicos del objeto como array.
-	* @return array Array con los datos dinámicos del objeto como pares atributo=>valor.
+	* Return current object dynamic attributes as an array.
+	* @return mixed Array with object dynamic attributes as a pair of
+	* <attribute>=><value> or null if no dynamic attribute is present.
 	*/
 	public function getDynamicAttributes(){
 		return $this->dynamicAttributes;
@@ -543,8 +557,8 @@ abstract class ROModel{
 	
 	
 	/**
-	* Devuelve los datos dinámicos del objeto como array. Sobrecarga de getDynamicAttributes.
-	* @return array Array con los datos dinámicos del objeto como pares atributo=>valor.
+	* Return current object dynamic attributes as an array.
+	* @return array Array with object dynamic attributes as a pair of <attribute>=><value>.
 	*/
 	public function getDynamicAttributesAsArray(){
 		$dynamicData = $this->getDynamicAttributes();
@@ -556,8 +570,10 @@ abstract class ROModel{
 	
 	
 	/**
-	* Devuelve los datos del objeto como array formateados para que sean legibles por un humano.
-	* @return array Array con los datos del objeto como pares atributo=>valor.
+	* Return current object attributes as an array.
+	* This method should be overwritten to return data in a way that's readable
+	* for humans.
+	* @return array Array with object data as a pair of <attribute>=><value>.
 	*/
 	public function getAsFormattedArray(){
 		return $this->getAsArray();
@@ -565,39 +581,37 @@ abstract class ROModel{
 	
 
 	/**
-	 * Informa de las condiciones implícitas de carga de los objetos.
-	 * Esto es, condiciones obtenidas en todo método dbLoad, dbLoadAll, dbDelete y sus derivados.
-	 * Estas condiciones se añadirán a las condiciones que pase el desarrollador
-	 * de este modelo, por lo que ha de tener cuidado al definirlas.
-	 * Esta funcionaldad permite tener atributos como "is_erased" que indican
-	 * estados "sumidero", o lo que es igual, estados de los que es imposible salir.
-	 * También permite tener varios sitios web usando el mismo modelo y
-	 * evitando que desde un sitio web se puedan ver otros.
-	 * @return array Array con las condiciones implícitas de carga de objetos de este modelo.
+	 * Implicit conditions when loading objects.
+	 * 
+	 * All methods dbLoad, dbLoadAll, dbDelete and Queries will be affected
+	 * by this implicit base conditions.
+	 * 
+	 * The idea is overwrite this conditions to include attributes that help us
+	 * to mark objects as deleted and ignore them when dealing with objects.
+	 * 
+	 * @return array Array with pairs <attribute>=>[<operator> => <"value">].
 	 * */
 	public static function implicitBaseCondition(){
-		// Por defecto, no hay condiciones implícitas
+		// By default there are no implicit conditions
 		return [];
 	}
 	
 	
 	/**
-	 * Devuelve la condición de una consulta de carga de objetos.
-	 * Es decir, añade las condiciones implícitas a las condiciones que
-	 * ha introducido el desarrollador.
-	 * @return array Array con las condiciones finales que se deben ejecutar para cargar objetos. 
+	 * Add implicit conditions to dbLoad or dbLoadAll condition.
+	 * 
+	 * @param array $explicitCondition Explicit condition that will be extended
+	 * with the implicit base condition.
+	 * @return array Final conditions to apply to query. 
 	 * */
 	protected static function getBaseCondition($explicitCondition){
-		// Condición implícita
+		// Implicit condition
 		$implicitCondition = static::implicitBaseCondition();
-		// Si no hay condiciones explícitas, devolvemos las implícitas
+		// If there are no explicit conditions, return implicit ones
 		if(is_null($explicitCondition) or (is_array($explicitCondition) and count($explicitCondition)==0)){
 			return $implicitCondition;
 		}
-		// Hay condiciones explícitas, por lo tanto, hemos de añadirles
-		// las condiciones implícitas sin romper nada.
-		// Por tanto, las condiciones finales serán las condiciones implícitas
-		// con los cambios introducidos desde las condiciones explícitas
+		// Otherwise, merge both conditions
 		$finalCondition = $implicitCondition;
 		foreach($explicitCondition as $attribute=>$value){
 			$finalCondition[$attribute] = $value;
@@ -607,20 +621,9 @@ abstract class ROModel{
 
 	
 	/**
-	* Devuelve el atributo textual. Se le pueden aplicar modificadores textuales de TextHelper.
-	* @param string|array $modifiers Modificadores de textos existentes en TextHelper.
-	* @return string Atributo del objeto.
-	*/ 
-	public function getAttr($attribute, $modifiers=null){
-		if($modifiers==null){ return $this->$attribute; }
-		$text = TextHelper::modifyText($this->$attribute, $modifiers);
-		return $text;
-	}
-	
-	
-	/**
-	* Asigna al atributo un nuevo valor.
-	* @param string Nuevo valor para el atributo $value del objeto.
+	* Assign a value to an attribute.
+	* @param string $attribute Name of the attribute to assign.
+	* @param mixed New value to $attribute attribute.
 	*/
 	public function setAttr($attribute, $value){
 		$this->$attribute = $value;
@@ -628,9 +631,8 @@ abstract class ROModel{
 	
 	
 	/**
-	* Asigna al atributo un nuevo valor.
-	* @param $values Pares clave-valor que asignan a los atributos del objeto.
-	* @return array Array con los nombres de los atributos modificados.
+	* Assign values to object attributes.
+	* @param array $values Array of pairs <attribute>=><value>.
 	*/
 	public function setAttributes($values){
 		// Para cada atributo que hemos pasado como parámetro,
@@ -647,28 +649,26 @@ abstract class ROModel{
 	
 	
 	/**
-	 * Método clean para el método setFromArray.
-	 * Establece los valores por defecto en el array que va a asignar atributos
-	 * al objeto $object.
+	 * Clean method for setFromArray.
+	 * Set default values for the array that will be used to assign attributes
+	 * to a model object.
 	 * 
-	 * @param array $data Array con los datos a asignar.
-	 * @param object $object Objeto sobre el que se van a asignar.
-	 * @return array Array con los datos preparados para asignarlos a $object.
+	 * 
+	 * @param array $data Array with data to assign.
+	 * @param object $object Object to be edited.
+	 * @return array Array with cleaned data to assign it to object.
 	 * 	 */
 	public static function cleanSetFromArray($data, $object){
-		// Para cada atributo, comprobamos si está presente en $data
-		// Si no está presente pero tenemos forma de obtener un valor,
-		// lo obtenemos de donde podamos (del objeto o el valor por defecto definido)
+		// Attribute value setting
 		$attributeNames = array_keys(static::$ATTRIBUTES);
 		foreach($attributeNames as $attributeName){
-			// Si el atributo no está presente en los datos
+			// If attribute is not in data
 			if(!array_key_exists($attributeName, $data)){
-				// Si el objecto tiene un valor asignado, asignamos este valor
+				// If attribute has a value in object
 				if(isset($object->$attributeName)){
 					$data[$attributeName] = $object->$attributeName;
 				}
-				// Si la clase tiene un valor por defecto,
-				// asignamos este valor predeterminado
+				// Default value
 				elseif(isset(static::$ATTRIBUTES[$attributeName]["default"])){
 					$data[$attributeName] = static::$ATTRIBUTES[$attributeName]["default"];
 				}
@@ -678,53 +678,50 @@ abstract class ROModel{
 	}
 	
 	/**
-	* Asigna al atributo un nuevo valor a partir de un formulario.
-	* @param $values Pares clave-valor que asignan.
+	* Assign values to an object.
+	* @param $values Array of pairs with the data to assign.
 	*/
 	public function setFromArray($values){
 		$processedValues = [];
-		// Si existe el método cleanFromArray, se ejecuta y convierte los datos
-		// del array a datos que puede interpretar el objeto de forma correcta
+		// If method cleanSetFromArray exists and is callable, apply it to
+		// input data values
 		$cleanMethodName = "cleanSetFromArray";
 		if(method_exists(static::CLASS_NAME, $cleanMethodName) and is_callable([static::CLASS_NAME, $cleanMethodName])){
 			$processedValues = static::$cleanMethodName($values, $this);
 		}
-		// Si no existe el método cleanFromArray
+		// If cleanFromArray is not callable, assign input data values
+		// directly to input object values
 		else{
 			$processedValues = $values;
 		}
 		
-		// Array que contendrá los atributos correctos en formato
-		// adecuado para el método $this->setAttributes
 		$attributeAssignement = [];
-		// Para cada valor que hemos introducido, si existe el método
-		// clean_<attribute>, lo ejecutamos antes para validar
-		// o convertir el atributo antes de asignarlo.
-		// Si no existe el método clean_<attribute> lo asignamos directamente.
+		
+		// For each attribute, call clean_<attribute> if it exists.
+		// Otherwise, assign its value
 		foreach($processedValues as $name=>$value){
-			// Si existe un método "clean" para ese atributo que comprueba
-			// si tiene un valor adecuado, se asigna al array de datos
-			// procesados
 			$cleanAttributeMethodName = "clean_{$name}";
 			$hasCleanAttribute = method_exists(static::CLASS_NAME, $cleanAttributeMethodName) and is_callable([static::CLASS_NAME, $cleanAttributeMethodName]);
 			if($hasCleanAttribute){
-				$attributeAssignement[$name] = static::$method_name($value);
+				$attributeAssignement[$name] = static::$cleanAttributeMethodName($value);
 			}
 			else{
 				$attributeAssignement[$name] = $value;
 			}
 		}
-		// Asignación de los datos procesados
+		// Assignement of attribute values to this objects
 		$this->setAttributes($attributeAssignement);
 		
-		// Asignación en una variable dinámica de los valores del formulario
+		// Assignement of original source values to a dynamic attribute to
+		// keep them just in case
 		$this->_source_values = $values;
 	}
 	
 	/**
-	* Comprueba si el atributo $attribute empareja con la cadena pasada como parámetro.
-	* @param $regex Expresión regular en formato PERL (formato preg_match en PHP) del atributo que se desea comprobar si empareja con la cadena.
-	* @return boolean true si empareja con la $regex, false en otro caso.
+	 * Check if $attribute attribute value matches with a regex.
+	 * @param string $regex Regular expression to match $attribute.
+	 * @param string $attribute Attribute to check if matches with $regex.
+	 * @return boolean true if preg_match($regex, $this->$attribute). False otherwise.
 	*/ 
 	public function pregMatchAttr($regex, $attribute){
 		return (preg_match($regex, $this->$attribute) >= 1);
@@ -732,43 +729,30 @@ abstract class ROModel{
 	
 	
 	/**
-	* Comprueba si el atributo $COD_SEDE está vacío (empty).
-	* @return boolean true si el atributo del objeto está vacío, false en otro caso. I. E. devuelve el resultado de aplicar empty sobre el atributo.
+	 * Check if the value of an attrribute is empty.
+	 * Check if $this->$attribute is empty.
+	 * @param string $attribute Attribute to check if its value is empty
+	 * @return boolean true if attribute value is empty, false otherwise.
 	*/ 
 	public function attrIsEmpty($attribute){
 		return empty($this->$attribute);
 	}
 	
 	
-	/**
-	* Comprueba si un valor para el atributo $value es válido según la especificación del atributo $value del modelo.
-	* @param string $value Valor que se va a comprobar si obedece las especificaciones del atributo con el mismo nombre.
-	* @return boolean True si $value cumple las especificaciones (es un valor para $value válido); false en otro caso.
-	*/
-	public static function attrValueIsValid($attribute, $value){
-		$type = $this->attributeTypes[$attribute]["type"];
-		return gettype($value) == $type;
-	}
-	
-	
 	/******************************************************************/
 	/******************************************************************/
 	/******************************************************************/
 	/******************************************************************/
 	
 	/**
-	 * Comprueba si este objeto obedece a sus restricciones propias
-	 * @return true si es correcto, false en otro caso.
+	 * Check if this object is valid.
+	 * This method should be overwritten.
+	 * @return true if this object is valid, false otherwise.
 	 * */
 	public function isValid(){
 		return true;
 	}
-	
-	
-	
-	/**************************************************************************/
-	/**************************************************************************/
-	/**************** Gestión de atributos a nivel de objeto ******************/
+
 	
 	/**
 	 * Informa, a nivel de objeto si existe un atributo dinámico.
