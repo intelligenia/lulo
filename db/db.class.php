@@ -58,6 +58,7 @@ class DB {
 					static::$db_connection = ADONewConnection(static::DRIVER);
 					static::$db_connection->charSet = 'utf8';
 					static::$db_connection->PConnect($server, $user, $password, $database);
+					static::$db_connection->Execute("USE " . $database);
 					break;
 
 				default:
