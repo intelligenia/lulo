@@ -463,7 +463,7 @@ class Tester{
 		}
 		
 		// Etiquetas del usuario $user
-		$tags = $user->dbLoadRelated("tags", $remoteCondition=[], $order=["name"=>"asc"], $limit=null, $container="query");
+		$tags = $user->dbLoadRelated("tags", $remoteCondition=[], $order=["name"=>"asc"], $limit=null, $container="queryresult");
 		if($tags->count() == $loadedTags->count()){
 			print "- Éxito las etiquetas relacionadas son iguales a las que había inicialmente<br>";
 		}else{

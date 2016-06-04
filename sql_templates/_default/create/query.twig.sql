@@ -1,3 +1,4 @@
+{# Generate the CREATE TABLE DDL statement for a table #}
 
 {# Sets type for attribute #}
 {% macro attr_type(attribute_properties) %}

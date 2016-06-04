@@ -47,8 +47,8 @@ trait Save {
 	protected function _dbSaveOldObject($blobs=[]){
 		$db = static::DB;
 		
-                // id autoincrementable attribute
-                $id_attribute_name = static::ID_ATTRIBUTE_NAME;
+		// id autoincrementable attribute
+		$id_attribute_name = static::ID_ATTRIBUTE_NAME;
                 
 		// Primary key
 		$pkValue = $this->getPk();

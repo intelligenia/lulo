@@ -11,24 +11,30 @@ require LULO_DIR__DEPENDENCES__VENDOR . "/autoload.php";
  */
 class DB {
 
+	/** AdoDB database connection */
 	protected static $db_connection = null;
 
-	/** Motor de base de datos */
+	/** Database engine */
 	const ENGINE = "mysql";
 
-	/** Controlador de conexión con la base de datos */
+	/** Driver used to make the connection */
 	const DRIVER = "mysqli";
+	
+	/** Blob max length */
 	const BLOB_MAX_PACKET_LENGTH = 52428800;
 
 	/**
-	 * Crea la conexión con la base de datos
+	 * Create database connection.
+	 * Initializes $db_connection attribute.
+	 * @param string $server Server address.
+	 * @param string $user Username.
+	 * @param string $password Password used to authenticate user $user.
+	 * @param string $database Database to connect.
+	 * @param boolean $debug Should we use debug mode?
 	 * */
-	public static function connect($server, $user, $password, $database = null) {
+	public static function connect($server, $user, $password, $database=null, $debug=false) {
 
-		/* Creamos la conexion con ADOdb  */
 		try {
-			// nivel de error a E_ERROR para no imprimir los warnings que se pueden producir aunque sí
-			// se captura la excepción en esos casos.
 			$error = error_reporting(E_ERROR);
 
 			switch (static::DRIVER) {
@@ -54,139 +60,146 @@ class DB {
 					mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 					break;
 
+				case "mssql2008":
+				case "mssql2012":
 				case "mssqlnative":
-					static::$db_connection = ADONewConnection(static::DRIVER);
+					static::$db_connection = ADONewConnection("mssqlnative");
 					static::$db_connection->charSet = 'utf8';
 					static::$db_connection->PConnect($server, $user, $password, $database);
 					static::$db_connection->Execute("USE " . $database);
 					break;
 
 				default:
-					trigger_error("No se ha definido un método válido de conexión a la BD. Contacte con el administrador.", E_USER_ERROR);
+					trigger_error("Not valid database connection ".static::DRIVER, E_USER_ERROR);
 					break;
 			}
 
-			// restablecer nivel de error anterior
 			error_reporting($error);
 
+			// Fetch data mode
 			static::$db_connection->SetFetchMode(ADODB_FETCH_ASSOC);
-			/* DESCOMENTAR ESTA LÍNEA PARA HABILITAR MODO DEBUG */
-			//static::$db_connection->debug = true;
-		} catch (exception $e) {
-			// si algo ha ido mal al instanciar la conexión a la BD, devolver error 503
+		
+			// Debug mode
+			static::$db_connection->debug = $debug;
+		} catch (Exception $e) {
+			// If there is some exception show 503 error
 			require_once __DIR__ . "error503.php";
 			die();
 		}
 	}
 
-	public static function resetQueryCache() {
-		static::$db_connection->execute("RESET QUERY CACHE");
+	/**
+	 * Describe table structure.
+	 * @param string $table Database table.
+	 * @return array with the information of the table. It depends on the DBMS.
+	 * For example, for MySQL is:
+	 * - Field: field name
+	 * - Type: field type
+	 * - Null: NO or YES,
+	 * - Key: PRI if primary key, UNI if unique, MUL if multikey
+	 * - Default: default value
+	 * - Extra: if it is AUTOINCREMENT and more options.
+	 */
+	public static function describe($table) {
+		return static::executeSqlTemplate("describe/query.twig.sql", $table);
 	}
-
-	/*
-	 * Escapa una cadena de texto para ser usada como cadena en la BD.
-	 * @param string $str Cadena a escapar.
-	 * @return string Cadena $str escapada (si hacía falta).
+	
+	/**
+	 * Clear query cache.
+	 * @return array Results of clearing the cache
+	 * 	 */
+	public static function clearQueryCache() {
+		return static::executeSqlTemplate("cache/clear/query.twig.sql");
+	}
+	
+	/**
+	 * Executes a SQL statement loaded from a path.
+	 * @param string $path Path of the SQL template.
+	 * @param string $table Table name the statement will be execute.
+	 * @param array $replacements Extra replacements needed for getting the SQL.
+	 * @return array Array with the results of the statement execution.
 	 * */
-
+	protected static function executeSqlTemplate($path, $table=null, $replacements=[]){
+		$sql = static::getSqlFromSqlTemplate($path, $table, $replacements);
+		return static::$db_connection->execute($sql);
+	}
+	
+	/**
+	 * Gets the SQL of a SQL statement loaded from a path.
+	 * @param string $path Path of the SQL template.
+	 * @param string $table Table name the statement will be returned.
+	 * @param array $replacements Extra replacements needed for getting the SQL.
+	 * @return string SQL code with the replacements for table and other variables done.
+	 * */
+	protected static function getSqlFromSqlTemplate($path, $table=null, $replacements=[]){
+		// Statement
+		$sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource($path);
+		if(!is_null($table)){
+			$replacements["table"] = $table;
+		}
+		$sql = $sqlT->render($replacements);
+		return $sql;
+	}
+	
+	
+	/*
+	 * Escape a variable to be included in a SQL statement..
+	 * @param string $str String to escape.
+	 * @return string Escaped $str string.
+	 * */
 	public static function qstr($str) {
-
 		return static::$db_connection->qstr($str);
 	}
 
+	
 	/**
-	 * Describe la estructura de una tabla de la base de datos.
-	 * @param string $table Nombre de la tabla.
-	 * @return array con los siguientes campos
-	 * Field (nombre del campo), Type (tipo del campo), Null (NO si no es null o YES si sí lo es),
-	 * 	Key (si es clave primaria [PRI], único [UNI]. multiclave [MUL]),
-	 * Default (valor por defecto), Extra (si es autoincrementado y cosas así).
-	 */
-	public static function describe($table) {
-
-		return static::$db_connection->execute("DESCRIBE " . $table);
-	}
-
-	/**
-	 * Describe completamente la estructura de una tabla de la base de datos.
-	 * @param string $table Nombre de la tabla.
-	 * @return array con los siguientes campos
-	 * Field (nombre del campo), Type (tipo del campo), Collation (codificación),
-	 * 	Null (NO si no es null o YES si sí lo es), Key (si es clave primaria [PRI], único [UNI]. multiclave [MUL]),
-	 * 	Default (valor por defecto), Extra (si es autoincrementado y cosas así),
-	 * 	Privileges (privilegios de los usuarios para ver el campo), Comment (comentarios a cada uno de los campos).
+	 * 	Get information about table indices.
 	 *
-	 */
-	public static function showFullColumns($table) {
-
-		return static::$db_connection->execute("show full columns from `$table`");
-	}
-
-	/**
-	 * 	Obtiene la información acerca de los índices definidos sobre una tabla
+	 * @param string $table Table anem
 	 *
-	 * @param string $table Nombre de la tabla
-	 *
-	 * @return Object ADORecordSet correspondiente al motor de BD empleado, con todas
-	 * 	las columnas sobre las que hay definido un índice. Al iterar sobre el objeto,
-	 * 	cada columna viene dada por un array de claves-valor con los campos:
-	 * 		***************************************************************************
-	 * 		[!!!] IMPORTANTE: los campos indicados solo se han comprobado sobre BDs MySQL,
-	 * 			aunque se espera que otras BDs tengan una estructura similar. Por tanto,
-	 * 			esta documentación debe considerarse como "parcial" hasta que se efectúen
-	 * 			las pruebas necesarias sobre distintos SGBDs.
-	 * 		***************************************************************************
-	 * 			'Table' => string Nombre de la tabla a la que pertenece la columna
-	 * 			'Non_unique' => string indicando si el índice al que pertenece la columna
-	 * 			puede o no contener duplicados. Puede ser '0' (no puede tener duplicados)
-	 * 			ó '1' (puede tener duplicados).
-	 * 			'Key_name' => string nombre del índice al que pertenece la columna
-	 * 			'Seq_in_index' => string orden de la columna en el índice, empezando desde 1
-	 * 			'Column_name' => string nombre de la columna
-	 * 			'Collation' => string criterio de ordenación de la columna en el índice.
-	 * 			En MySQL, puede tener valores 'A' (Ascendente) o NULL (No ordenado).
-	 * 			'Cardinality' => string número de valores únicos en el índice, null si no
-	 * 			hay valores únicos (o no se han actualizado)
-	 * 			'Sub_part' => string número de caracteres indexados si la columna sólo
-	 * 			está indexada parcialmente, null si la columna entera está indexada.
-	 * 			'Packed' => string indica cómo está empaquetada la clave, null si no lo está.
-	 * 			'Null' => string 'YES' si la columna puede contener NULL; si no, contiene 'NO'
-	 * 			desde MySQL 5.0.3, y '' antes.
-	 * 			'Index_type' => string método de índice usado ('BTREE', 'FULLTEXT', 'HASH', 'RTREE').
-	 * 			'Comment' => string comentarios sobre la columna en el índice
+	 * @return Object ADORecordSet with the information of the index of the table.
+	 * Note thata the information depends on the DBMS used.
+	 * 
+	 * For example, we show the MySQL returned fields:
+	 * 			'Table' => string Table name
+	 * 			'Non_unique' => 0 if can't contain duplicate values, 1 otherwise.
+	 * 			'Key_name' => index name.
+	 * 			'Seq_in_index' => string order in the column of index, starting from 1
+	 * 			'Column_name' => string column name
+	 * 			'Collation' => string 'A' (ascending order) o NULL (without order).
+	 * 			'Cardinality' => string number of unique values of the index. Null if
+	 *			there are no unique values.
+	 * 			'Sub_part' => string indexed character number that are really indexed
+	 *			useful for knowing if indexing is done partially. Null if full column is indexed.
+	 * 			'Packed' => key is packed by this method, null if key is not packed.
+	 * 			'Null' => string 'YES' if column can contain NULL; 'NO' otherwise.
+	 * 			'Index_type' => index type ('BTREE', 'FULLTEXT', 'HASH', 'RTREE').
+	 * 			'Comment' => comments about index column
 	 *
 	 */
 	public static function showIndex($table) {
-
-
-		if (in_array(static::DRIVER, array("oci8", "oci8po"))) {
-			$query = "SELECT * FROM all_indexes WHERE table_name='" . strtoupper($table) . "'";
-		} else
-			$query = "SHOW INDEX FROM $table";
-
-		return static::$db_connection->execute($query);
+		return static::executeSqlTemplate("index/show/query.twig.sql", $table, $replacements=[]);
 	}
 
 	/**
-	 * 	Alias de self::showIndex. Obtiene la información acerca de los índices
-	 * 	definidos sobre una tabla
-	 *
-	 * @param string $table Nombre de la tabla
-	 *
-	 * @return Object ADORecordSet según lo descrito en self::showIndex
-	 *
-	 */
-	public static function showKeys($table) {
-
-		return self::showIndex($table);
+	 * Get the last ID inserted in DB.
+	 * Unique for session.
+	 * Works in all DBMS that implements this
+	 * Read http://dev.mysql.com/doc/refman/5.5/en/information-functions.html#function_last-insert-id for MySQL explanation
+	 * @return last inserted id in database.
+	 * */
+	public static function getLastInsertId() {
+		$results = static::executeSqlTemplate("get_last_inserted_id/query.twig.sql");
+		return $results->fields["id"];
 	}
-
+	
 	/**
-	 * 	Inserta en BD un campo largo. Lo hace por partes para no agotar la memoria destinada a un script
-	 * 	@param string $tname nombre de la tabla.
-	 * 	@param string $field nombre del campo largo.
-	 * 	@param string $value valor del campo largo. ES MODIFICADO.
-	 * 	@param string $where_cond condición para obtener la tupla a modificar.
+	 * 	Insert a longblob
+	 *  Used to avoid fully storing the blob in memroy
+	 * 	@param string $tname table name.
+	 * 	@param string $field name of the LONGBLOB field.
+	 * 	@param string $value LONGBLOB value. MODIFIED.
+	 * 	@param string $where_cond condition to get tuple.
 	 */
 	public static function UpdateBlob($tname, $field, &$value, $where_cond) {
 		$max_packet = static::BLOB_MAX_PACKET_LENGTH;
@@ -194,43 +207,46 @@ class DB {
 		while ($actual < strlen($value)) {
 			$packet = substr($value, $actual, $max_packet);
 			$actual+=$max_packet;
-
 			$data = static::$db_connection->qstr($packet);
 			static::$db_connection->Execute("UPDATE $tname SET $field=concat($field,$data) WHERE $where_cond");
 		}
 	}
 
+	
 	/**
-	 * Convertimos un array con los nuevos datos a una cadena que pueda ser interpretada como SQL.
-	 * @param array $new_data Array de datos con los nuevos datos.
-	 * @return string Cadena SQL con los nuevos datos.
+	 * Convert an array with new data to its SQL equivalent string.
+	 * Basically, escape each one of the values of $new_data and prepare a
+	 * VALUES part of INSERT SQL statement.
+	 * @param array $new_data Array with data to use in an SQL INSERT.
+	 * @return string SQL string with the values ready to be used.
 	 */
 	public static function convertDataArrayToSQLModificationString($new_data) {
-
-		// Para cada valor, le metemos su valor especial si hace falta
+		// Conversion for each value if it is needed
 		foreach ($new_data as $nkey => &$nvalue) {
-			if (is_string($nvalue))
+			if (is_string($nvalue)){
 				$nvalue = static::$db_connection->qstr($nvalue);
-			elseif (is_null($nvalue))
+			}
+			elseif (is_null($nvalue)){
 				$nvalue = "NULL";
-			elseif (is_bool($nvalue))
+			}elseif (is_bool($nvalue)){
 				$nvalue = $nvalue ? 1 : 0;
-			elseif (is_float($nvalue))
+			}elseif (is_float($nvalue)){
 				$nvalue = str_replace(",", ".", $nvalue);
+			}
 		}
+		// Construction of the SQL VALUES string
 		$new_data_sql = "(" . implode(",", $new_data) . ")";
 		return $new_data_sql;
 	}
 
 	/**
-	 * Inserción de datos que (INSERT) tiene en cuenta las peculiaridades del SGBD en el tratamiento
-	 * de BLOBs y CLOBs
-	 * Los datos se reciben sin los caracteres especiales citados. Este método ya se encarga de hacer eso.
-	 * @param string $tname Nombre de la tabla donde hacer la inserción
-	 * @param array $data Array asociativo con los nombres de campo como clave y sus valores asociados
-	 * @param mixed $blobfields Array con lista de campos o string con nombres de campo separados por espacio. Campos tipo BLOB
-	 * @param mixed $clobfields Array con lista de campos o string con nombres de campo separados por espacio. Campos tipo CLOB
-	 * @return boolean TRUE si la fila se insertó correctamente o FALSE en caso contrario
+	 * Insertion of data. This function try to insert BLOBs in a non-memory exhausting operation.
+	 * This method escape all values, don't worry about the data.
+	 * @param string $tname Table name to make the insertion.
+	 * @param array $data Associative array of the form <field name> => <value>
+	 * @param mixed $blobfields List of columns that are blobs.
+	 * @param mixed $clobfields List of columns that are clobs.
+	 * @return boolean true if insertion went right, false otherwise.
 	 */
 	public static function insert($tname, &$data, $blobfields = array(), $clobfields = array()) {
 		if (is_string($blobfields)) {
@@ -241,21 +257,20 @@ class DB {
 			$clobfields = preg_split('/ +/', $clobfields);
 		}
 
-		//Calculamos el tamaño máximo de los BLOBs para que la consulta final no exceda el tamaño máximo de consulta
+		// Max size of blobs
 		$num_blobs = count($blobfields) + count($clobfields);
 		if ($num_blobs > 0) {
 			$max_packet = static::BLOB_MAX_PACKET_LENGTH / $num_blobs;
 		}
 
-		// lista de campos con valores "normales" y LOBs convertidos a NULL
+		// Standard attributes and NULLs
 		foreach ($data as $field => $value) {
 			if (in_array($field, $blobfields) || in_array($field, $clobfields)) {
 				$new_data[$field] = "";
 				if (!in_array(static::DRIVER, array("oci8", "oci8po"))) {
-					//Todo el control de tamaño máximo de consulta lo hacemos para otros DBMSs que no son Oracle, ya que este tiene su propio mecanismo para BLOBs
+					// Assuming memory control is only needed in MySQL
 					if (strlen($value) < $max_packet) {
-						//Aunque sea BLOB, si contiene pocos datos, lo insertamos directamente en la consulta.
-						//Así optimizamos los accesos a la BD
+						// If blob is small enough, insert it in the query
 						$new_data[$field] = $value;
 						unset($blobfields[array_search($field, $blobfields)]);
 						unset($clobfields[array_search($field, $clobfields)]);
@@ -265,79 +280,74 @@ class DB {
 				$new_data[$field] = $value;
 			}
 		}
-		////////////////////////////////////////////////////////////////////////////
-		/// Inserción de campos que no son blob
-		//$ok = static::$db_connection->AutoExecute($tname,$new_data,'INSERT');
+		
+		/// INSERT of non-blob attributes
 		$data_keys = array_keys($new_data);
 		$data_keys_sql = "(" . implode(",", $data_keys) . ")";
-		// Para cada valor, le metemos su valor especial si hace falta
+		// Escape of the values
 		$new_data_sql = self::convertDataArrayToSQLModificationString($new_data);
-		// Generación del SQL de inserción
+		// SQL code for the insertion
 		$insertSQL = "INSERT INTO $tname $data_keys_sql VALUES $new_data_sql";
-		// print_r($insertSQL);
 		$ok = static::$db_connection->Execute($insertSQL);
-		////////////////////////////////////////////////////////////////////////////
-		/// BLOBs y CLOBs. Construir clausula where y hacer actualizaciones
+		
+		/// BLOBs & CLOBs
 		if ($ok) {
 			foreach ($new_data as $field => $value) {
-				if ($value != "")
+				if ($value != ""){
 					$where[] = $field . self::strEq($value);
+				}
 			}
 
 			$where_cond = implode(" AND ", $where);
 
 			foreach ($blobfields as $field) {
-				if ($ok !== false && isset($data[$field]))
+				if ($ok !== false && isset($data[$field])){
 					if (in_array(static::DRIVER, array("oci8", "oci8po"))) {
 						$ok = static::$db_connection->UpdateBlob($tname, $field, $data[$field], $where_cond);
 					} else {
 						self::UpdateBlob($tname, $field, $data[$field], $where_cond);
 					}
+				}
 			}
 
-			foreach ($clobfields as $field)
-				if ($ok !== false && isset($data[$field]))
+			foreach ($clobfields as $field){
+				if ($ok !== false && isset($data[$field])){
 					if (in_array(static::DRIVER, array("oci8", "oci8po"))) {
 						$ok = static::$db_connection->UpdateClob($tname, $field, $data[$field], $where_cond);
 					} else {
 						self::UpdateBlob($tname, $field, $data[$field], $where_cond);
 					}
+				}
+			}
 		}
 
 		return $ok !== false;
 	}
 
-	/**
-	 * Obtiene el último ID insertado en la BD.
-	 * Es único por sesión. Leer http://dev.mysql.com/doc/refman/5.5/en/information-functions.html#function_last-insert-id
-	 * para más información.
-	 * @return Último ID insertado en la base de datos.
-	 * */
-	public static function getLastInsertId() {
-
-		return static::$db_connection->GetOne("SELECT LAST_INSERT_ID()");
-	}
 
 	/**
-	 * Convierte un array con pares campo, valor.
-	 * @param array $new_data Array con los nuevos datos.
-	 * @return string Cadena con el contenido SQL.
+	 * Convert an array with new data to its SQL equivalent string.
+	 * Basically, escape each one of the values of $new_data and prepare a
+	 * VALUES part of UPDATE SQL statement.
+	 * @param array $new_data Array with data to use in an SQL UPDATE.
+	 * @return string SQL string with the values ready to be used.
 	 */
 	public static function convertDataArrayToSQLUpdateString($new_data) {
-		// Vamos generando la cadena de '<campo>'=<valor>
+		// Creation of pairs of '<field>'=<value> escaping when needed
 		$new_data_sql = "";
 		foreach ($new_data as $nkey => $nvalue) {
-			if (is_null($nvalue))
+			if (is_null($nvalue)){
 				$new_data_sql .= "$nkey=NULL";
-			elseif (is_bool($nvalue))
+			}elseif (is_bool($nvalue)){
 				$new_data_sql .= "$nkey=" . ($nvalue ? "1" : "0");
-			elseif (is_float($nvalue))
+			}elseif (is_float($nvalue)){
 				$new_data_sql .= "$nkey=" . str_replace(",", ".", $nvalue);
-			else
+			}else{
 				$new_data_sql .= $nkey . DB::strEq($nvalue);
+			}
 			$new_data_sql .= ",";
 		}
-		// Quitamos la última coma
+		// Deletion of last comma
 		$new_data_sql = substr($new_data_sql, 0, strlen($new_data_sql) - 1);
 		return $new_data_sql;
 	}
@@ -400,9 +410,6 @@ class DB {
 			}
 		}
 
-		// insertar campos "normales"
-		//$ok = static::$db_connection->AutoExecute($tname,$new_data,'UPDATE',$where);
-		////////////////////////////////////////////////////////////////////////////
 		/// Insertar campos que no son blob
 		// Para cada valor, le metemos su valor especial si hace falta
 		$new_data_sql = self::convertDataArrayToSQLUpdateString($new_data);
@@ -433,6 +440,7 @@ class DB {
 		return $ok !== false;
 	}
 
+	
 	/** Comparación de cadenas dentro de una consulta SQL con comprobación de NULL en Oracle
 	 *
 	 * Este método sirve para hacer la comparación de igualdad de cadenas teniendo en cuenta que
@@ -1059,54 +1067,54 @@ class DB {
 		return $where;
 	}
 
+	
 	/**
-	 * Genera una condición DISYUNTIVA WHERE completa preparada para ser añadida a una sentencia SQL.
-	 * @param array $fields Array asociativo donde las claves son los campos de la tabla que participan en la condición where, y los valores del array son los valores que deben tener los campos para que la fila se elimine.
-	 * @param bool $includeWhereKeyword Booleano que hace que se incluye la palabra reservada WHERE. Por defecto está a true. Si se le pasa una cadena se toma este parámetro como el parámetro $table y al $includeWhereKeyword se le mete false.
-	 * @param string $table Nombre de la tabla de la que se desea generar la condición where. Por defecto es null. Si el parámetro $includeWhereKeyword es una cadena, se le asignará ese valor.
-	 * @return string Devuelve una cadena con la condición where asociada al array.
+	 * Return a tuple as an array.
+	 * @param array|string $fields Fields to select. An array of columns or "*" if all columns must be selected.
+	 * @param array|string $condition Condición SQL. Associative array or string like "WHERE field1='' and field2...". If null no condition will be used.
+	 * @param array|string $oder Order to be applied to the results. With the form: <field>=>"ASC|DESC".
+	 * @return array Array that represents a tuple, so its keys are the names of the columns of the table.
 	 */
-	public static function makeORWhereCondition($fields, $includeWhereKeyword = true, $table = null) {
-		return self::makeWhereCondition($fields, $includeWhereKeyword, $table, "or");
+	public static function getRow($table, $fields="*", $condition = null, $order = null) {
+		$selected_fields = self::makeFieldsToSelect($fields);
+		return static::$db_connection->getRow("SELECT $selected_fields FROM $table " . self::makeWhereCondition($condition) . " " . self::makeOrderBy($order) . " LIMIT 1");
 	}
 
 	/**
-	 * Devuelve la primera fila de una tabla que cumple con una condición determinada.
-	 * @param array|string $fields Columnas a seleccionar de las filas. Por defecto, selecciona todas.
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' and field2...".
-	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
-	 */
-	public static function getRow($table, $fields = "*", $condition = null, $order = null) {
-		$fields = self::makeFieldsToSelect($fields);
-
-		//print "select ".$fields." from ".$table." ".self::makeWhereCondition($condition)." ".self::makeOrderBy($order) . " LIMIT 1";
-		return static::$db_connection->getRow("select " . $fields . " from " . $table . " " . self::makeWhereCondition($condition) . " " . self::makeOrderBy($order) . " LIMIT 1");
+	 * Return one value of a tuple.
+	 * @param string $table Table to get its random tuples.
+	 * @param array|string $selectedField Column which value we want to return.
+	 * @param array|string $condition Condición SQL. Associative array or string like "WHERE field1='' and field2...". If null no condition will be used.
+	 * @return string Value of selected field in table $table with condition $condition.
+	 * 	 */
+	public static function getOne($table, $selectedField, $condition=null) {
+		// This query contains an implicit LIMIT 1, so only the value of the first
+		// tuple will be returned
+		return static::$db_connection->getOne("SELECT $selectedField FROM $table " . self::makeWhereCondition($condition));
 	}
 
 	/**
-	 * Devuelve el valor de una columna de una fila que cumple con una condición determinada.
-	 * @param array|string $selectedField Columna a seleccionar de las fila obtenida de la consulta.
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' and field2...".
-	 */
-	public static function getOne($table, $selectedField, $condition = null) {
-
-		// Recordar que esta consulta lleva implícita el LIMIT 1
-		return static::$db_connection->getOne("select " . $selectedField . " from " . $table . " " . self::makeWhereCondition($condition));
-	}
-
-	/**
-	 * Devuelve todas las filas de una tabla que cumplen con una condición determinada.
-	 * @param string $table Nombre de la tabla a consultar.
-	 * @param array|string $fields Columnas a seleccionar de las filas. Por defecto, selecciona todas.  Por defecto es * (selecciona todos los campos).
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' and field2...". Por defecto es null.
-	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
-	 * @param array|string $limit Límite de filas que se seleccionarán. Por defecto es null.
-	 */
+	 * Get array of arrays to loop to the results of a getAll operation.
+	 * @param string $table Table to get its random tuples.
+	 * @param array|string $fields Fields to select. An array of columns or "*" if all columns must be selected.
+	 * @param array|string $condition Condición SQL. Associative array or string like "WHERE field1='' and field2...". If null no condition will be used.
+	 * @param array|string $oder Order to be applied to the results. With the form: <field>=>"ASC|DESC".
+	 * @return array Array of arrays where each contained array represents a tuple.
+	 * 	 */
 	public static function getAll($table, $fields = "*", $condition = null, $order = null, $limit = null) {
 		$rs = static::getAllAsRecordSet($table, $fields, $condition, $order, $limit);
 		return $rs->getArray();
 	}
 
+	
+	/**
+	 * Get recordset to loop to the results of a getAll operation.
+	 * @param string $table Table to get its random tuples.
+	 * @param array|string $fields Fields to select. An array of columns or "*" if all columns must be selected.
+	 * @param array|string $condition Condición SQL. Associative array or string like "WHERE field1='' and field2...". If null no condition will be used.
+	 * @param array|string $oder Order to be applied to the results. With the form: <field>=>"ASC|DESC".
+	 * @return object RecordSet object to loop through the results.
+	 * 	 */
 	public static function getAllAsRecordSet($table, $fields="*", $condition=null, $order=null, $limit=null)
 	{
 		$limit_interval = static::makeLimit($limit);
@@ -1115,97 +1123,41 @@ class DB {
 		return $rs;
 	}
 	
+	
+	/**
+	 * Get SQL for getAll operation.
+	 * @param string $table Table to get its random tuples.
+	 * @param array|string $fields Fields to select. An array of columns or "*" if all columns must be selected.
+	 * @param array|string $condition Condición SQL. Associative array or string like "WHERE field1='' and field2...". If null no condition will be used.
+	 * @param array|string $oder Order to be applied to the results. With the form: <field>=>"ASC|DESC".
+	 * @return string SQL code of the selection statement.
+	 * 	 */
 	private static function generateSQLForGetAll($table, $fields="*", $condition=null, $order=null){
 		$fields_to_select = static::makeFieldsToSelect($fields);
 		return "SELECT {$fields_to_select} FROM {$table} ".static::makeWhereCondition($condition)." ".static::makeOrderBy($order);
 	}
 	
 	/**
-	 * Devuelve todas las filas de una tabla que cumplen con una condición determinada ordenadas de forma aleatoria.
-	 * @param string $table Nombre de la tabla a consultar.
-	 * @param array|string $fields Columnas a seleccionar de las filas. Por defecto, selecciona todas.  Por defecto es * (selecciona todos los campos).
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' and field2...". Por defecto es null.
-	 * @param array|string $limit Límite de filas que se seleccionarán. Por defecto es null.
+	 * Return random tuples of a table.
+	 * @param string $table Table to get its random tuples.
+	 * @param array|string $fields Fields to select. An array of columns or "*" if all columns must be selected.
+	 * @param array|string $condition Condición SQL. Associative array or string like "WHERE field1='' and field2...". If null no condition will be used.
+	 * @param array|string $limit Limit of tuples. If null, no limit will be enforced.
 	 */
 	public static function getRandom($table, $fields = "*", $condition = null, $limit = null) {
 
-		$fields = self::makeFieldsToSelect($fields);
-		$pcondition = self::makeWhereCondition($condition);
-		//$order = self::makeOrderBy($order);
-		$order = "order by rand()";
-		$limit = self::makeLimit($limit);
+		$field_selection = self::makeFieldsToSelect($fields);
+		$where_condition_clause = self::makeWhereCondition($condition);
 
-		$sql = "SELECT $fields FROM $table $pcondition $order $limit";
-		#print_r($sql);
+		$order_clause = "ORDER BY RAND()";
+		$limit_clause = self::makeLimit($limit);
+
+		$sql = "SELECT $field_selection FROM $table $where_condition_clause $order_clause $limit_clause";
 
 		$res = static::$db_connection->getAll($sql);
-		// var_dump($res);
 		return $res;
 	}
 
-	/**
-	 * Devuelve todas las filas de una tabla que cumplen con una disyunción determinada.
-	 * @param string $table Nombre de la tabla a consultar.
-	 * @param array|string $fields Columnas a seleccionar de las filas. Por defecto, selecciona todas.  Por defecto es * (selecciona todos los campos).
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' OR field2...". Por defecto es null.
-	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
-	 * @param array|string $limit Límite de filas que se seleccionarán. Por defecto es null.
-	 */
-	public static function getDisjunctiveAll($table, $fields = "*", $condition = null, $order = null, $limit = null) {
-		$fields = self::makeFieldsToSelect($fields);
-
-		//print "select ".$fields." from ".$table." ".self::makeORWhereCondition($condition)." ".self::makeOrderBy($order)." ".self::makeLimit($limit);
-		return static::$db_connection->getAll("select " . $fields . " from " . $table . " " . self::makeORWhereCondition($condition) . " " . self::makeOrderBy($order) . " " . self::makeLimit($limit));
-	}
-
-	/**
-	 * Devuelve todas las filas de una tabla que cumplen con una disyunción determinada. ANTICUADO.
-	 * @param string $table Nombre de la tabla a consultar.
-	 * @param array|string $fields Columnas a seleccionar de las filas. Por defecto, selecciona todas.  Por defecto es * (selecciona todos los campos).
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' OR field2...". Por defecto es null.
-	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
-	 * @param array|string $limit Límite de filas que se seleccionarán. Por defecto es null.
-	 */
-	public static function getDisjunctiveLikeAll($table, $fields = "*", $condition = null, $order = null, $limit = null) {
-		return self::getDisjunctiveAll($table, $fields, $condition, $order, $limit);
-	}
-
-	/**
-	 * Devuelve todas las filas de una tabla que cumplen con una disyunción determinada con condiciones extra.
-	 * @param string $table Nombre de la tabla a consultar.
-	 * @param array|string $fields Columnas a seleccionar de las filas. Por defecto, selecciona todas.  Por defecto es * (selecciona todos los campos).
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' OR field2...". Por defecto es null.
-	 * @param array|string $extraConditions Condiciones extra que se aplicarán a la consulta.
-	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
-	 * @param array|string $limit Límite de filas que se seleccionarán. Por defecto es null.
-	 */
-	public static function getDisjunctiveAllWithExtraConditions($table, $fields = "*", $condition = null, $extraCondition = null, $order = null, $limit = null) {
-		$fields = self::makeFieldsToSelect($fields);
-
-		$condition = self::makeORWhereCondition($condition, false);
-		$extraCondition = self::makeWhereCondition($extraCondition, false);
-		if ($condition != "")
-			$condition = "where (" . $condition . ")";
-		if ($extraCondition != "")
-			$condition .= " and (" . $extraCondition . ")";
-		$order = self::makeOrderBy($order);
-		$limit = self::makeLimit($limit);
-		//print "select ".$fields." from ".$table." ".$condition." ".$order." ".$limit;
-		return static::$db_connection->getAll("select " . $fields . " from " . $table . " " . $condition . " " . $order . " " . $limit);
-	}
-
-	/**
-	 * Devuelve todas las filas de una tabla que cumplen con una disyunción determinada con condiciones extra. ANTICUADO.
-	 * @param string $table Nombre de la tabla a consultar.
-	 * @param array|string $fields Columnas a seleccionar de las filas. Por defecto, selecciona todas.  Por defecto es * (selecciona todos los campos).
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' OR field2...". Por defecto es null.
-	 * @param array|string $extraConditions Condiciones extra que se aplicarán a la consulta.
-	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
-	 * @param array|string $limit Límite de filas que se seleccionarán. Por defecto es null.
-	 */
-	public static function getDisjunctiveLikeAllWithExtraConditions($table, $fields = "*", $condition = null, $extraCondition = null, $order = null, $limit = null) {
-		return self::getDisjunctiveAllWithExtraConditions($table, $fields, $condition, $extraCondition, $order, $limit);
-	}
 
 	/**
 	 * Elimina la tabla $table.
@@ -1216,47 +1168,11 @@ class DB {
 		return static::$db_connection->Execute("DROP TABLE $table");
 	}
 
-	/**
-	 * Genera el siguiente ID de una tabla de secuencia.
-	 * @param string $table Nombre de la tabla de secuencia.
-	 */
-	public static function generateNextID($table) {
-
-		//print "<br/>La tabla con la secuencia es $table-> ";
-		// Comprobamos si la tabla existe
-		if (self::existsTable($table)) {
-			$filas = self::getRow($table, "*");
-			if (count($filas) == 0)
-				DB::dropTable($table);
-		}
-		$id = static::$db_connection->GenID($table);
-		//print $id;
-		return $id;
-	}
-
-	const SEQ_SUFFIX = "_seq";
 
 	/**
-	 * Genera el siguiente ID de una tabla de secuencia.
-	 * @param string $table Nombre de la tabla de secuencia.
-	 */
-	public static function generateNextIDForTable($table) {
-		return self::generateNextID(str_replace("-", "_", $table . self::SEQ_SUFFIX));
-	}
-
-	/**
-	 * Genera el siguiente ID de una tabla de secuencia por stack.
-	 * @param string $table Nombre de la tabla de secuencia.
-	 * @param string $stack Nombre del stack. Por defecto es el stack actual.
-	 */
-	public static function generateNextIDForTableByStack($table, $stack = EWSTACK) {
-		return self::generateNextID(str_replace("-", "_", $table . "_" . $stack . self::SEQ_SUFFIX));
-	}
-
-	/**
-	 * Devuelve un id único de elemento.
-	 * @param string $prefix Prefijo que se incluirá en la generación del md5.
-	 * @return string UUID de 2 letras [a-z] aleatorias + 32 caracteres [0-9a-f] (md5 de muchas cosas)
+	 * Create an unique uuid.
+	 * @param string $prefix UUID prefix.
+	 * @return string UUID with 2 random chars [a-z] + 32 chars [0-9a-f] (based on md5)
 	 */
 	public static function uuid($prefix = "") {
 		$uuid = uniqid($prefix . $_SERVER["SERVER_NAME"] . rand(0, 1000), true);
@@ -1267,232 +1183,99 @@ class DB {
 		return $uuid;
 	}
 
+
 	/**
-	 * Hace un slug "delgado" único en una tabla.
-	 * @param string $text Texto que queremos convertir en slug.
-	 * @param integer $limit Tamaño máximo del slug. Normalmente tendrá el mismo valor que el tamaño del varchar de la BD que contenga el slug.
-	 * @param string $tableName Nombre de la tabla que se ha de consultar para asegurar la unicidad del slug.
-	 * @param string $field Columna de la tabla $tableName que se desea que sea única.
-	 * @param array $extraCondition Condición extra de generación del slug (además de la unicidad de ese campo).
+	 * Show tables in the database.
+	 * @param string $database Database name.
+	 * @return array Array with the tables of $database database.
 	 * */
-	public static function dbMakeUniqueGlobalLargeSlug($text, $limit, $tableName, $field, $extraCondition = null) {
-		$slug = Slug::makeLargeSlug($text, $limit);
-		if (empty($slug))
-			$slug = "xyzzy";
-		//$condition = array("stack"=>EWSTACK, $field=>$slug);
-		$condition = array($field => $slug);
-		if ($extraCondition != null and is_array($extraCondition) and count($extraCondition) > 0)
-			$condition = array_merge($condition, $extraCondition);
-		$i = 2;
-		$res = DB::getOne($tableName, $field, $condition);
-		$existe = is_string($res);
-
-		while ($existe) {
-			$slugAux = $slug;
-
-			//Coletilla a añadir para que el slug sea único
-			$coletilla = "-" . $i;
-
-			//Si la longitud del slug obtenido es igual al límite indicado, recortamos el slug para que al añadir la coletilla la longitud se mantenga
-			//Hasta ahora no se controlaba esta longitud, de forma que al añadir la "coletilla" la longitud podría ser mayor a la indicada.
-			if (strlen($slug) == $limit) {
-				$slugAux = substr($slug, 0, $limit - strlen($coletilla));
-			}
-
-			$condition[$field] = $slugAux . $coletilla;
-
-			//$condition[$field] = $slug."-".$i;
-			$res = DB::getOne($tableName, $field, $condition);
-			$existe = is_string($res);
-			$i++;
-		}
-		return $condition[$field];
+	public static function showTables($database) {
+		return static::executeSqlTemplate("index/show_tables/query.twig.sql", $table=null, $replacements=["database"=>$database]);
 	}
 
-	/**
-	 * Genera un slug único según el campo "stack".
-	 * @param string $text Texto que queremos convertir en slug.
-	 * @param integer $limit Tamaño máximo del slug. Normalmente tendrá el mismo valor que el tamaño del varchar de la BD que contenga el slug.
-	 * @param string $tableName Nombre de la tabla que se ha de consultar para asegurar la unicidad del slug.
-	 * @param string $field Columna de la tabla $tableName que se desea que sea única.
-	 * @param array $extraCondition Condición extra de generación del slug (además de la unicidad de ese campo).
-	 * @return string Cadena de URL única por sitio web con el mismo campo stack (slug)
-	 */
-	public static function dbMakeUniqueLargeSlug($text, $limit, $tableName, $field, $extraCondition = null, $stackField = "stack") {
-		if ($extraCondition == null)
-			$extraCondition = array();
-		$extraCondition = array_merge(array($stackField => EWSTACK), $extraCondition);
-		return self::dbMakeUniqueGlobalLargeSlug($text, $limit, $tableName, $field, $extraCondition);
-	}
 
 	/**
-	 * Genera un slug único según el campo "_stack". Esto es, el campo automático de stack.
-	 * @param string $text Texto que queremos convertir en slug.
-	 * @param integer $limit Tamaño máximo del slug. Normalmente tendrá el mismo valor que el tamaño del varchar de la BD que contenga el slug.
-	 * @param string $tableName Nombre de la tabla que se ha de consultar para asegurar la unicidad del slug.
-	 * @param string $field Columna de la tabla $tableName que se desea que sea única.
-	 * @param array $extraCondition Condición extra de generación del slug (además de la unicidad de ese campo).
-	 * @return string Cadena de URL única por sitio web con el mismo campo stack (slug)
-	 */
-	public static function dbMakeUniqueLargeSslug($text, $limit, $tableName, $field, $extraCondition = null) {
-		return self::dbMakeUniqueLargeSlug($text, $limit, $tableName, $field, $extraCondition, $stackField = "_stack");
-	}
-
-	/**
-	 * Incrementa una columna de una tupla de forma atómica.
-	 * @param string $id Columna que se incrementará, esto es, la columna que se usa como identificador.
-	 * @param string $table Tabla sobre la que se va a ejecutar la consulta.
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' and field2...". Por defecto es null.
-	 * @return integer Valor del identificador actualizado para la tabla $table.
-	 * */
-	public static function increment($id, $table, $condition = null) {
-
-		$condition = self::makeWhereCondition($condition);
-		$res = static::$db_connection->execute("update $table set $id=@var:=$id+1 $condition;");
-		//update pruebas set $id=@var:=$id+1 where texto1="cont1"; select @var;
-		$res = static::$db_connection->execute("select @var;");
-		//$f0 = $res->FetchField(0);
-		//$res = $res->MetaType($f0->type, $f0->max_length);
-		return $res;
-	}
-
-	/**
-	 * Muestra las tablas de una base de datos.
-	 * @param string $database Nombre de la base de datos.
-	 * @param boolean $reformat Si es true se envía como un array en el que los valores son los nombres de las tablas; si es false, no se cambia el formato de la consulta de la BD.
-	 * @return array Array con las tablas de la base de datos.
-	 * */
-	public static function showTables($database = null, $reformat = true) {
-		$rows = null;
-
-		if ($database == null)
-			$database = static::$db_connection->database;
-		if (!in_array(static::DRIVER, array("oci8", "oci8po"))) {
-			$rows = static::$db_connection->getAll("SHOW TABLES FROM " . $database);
-			$res = array();
-			if ($reformat)
-				foreach ($rows as $row)
-					$res[] = $row["Tables_in_" . $database];
-			else
-				$res = $rows;
-			return $res;
-		}
-		// En caso de que sea Oracle, el desarrollador deberá hacer la comprobación antes
-		// UNDER YOUR RESPONSIBILITY
-		if ($database != null)
-			static::$db_connection->execute("use " . $database);
-		$rows = static::$db_connection->getAll("select * from  dba_tables");
-		return $rows;
-	}
-
-	/**
-	 * Muestra todas las tablas de un stack concreto. Es decir, las tablas que dependen ÚNICAMENTE de un stack. Estas tablas se caracterizan
-	 * por contener _<Nombre del stack>_ (nótese el guión delante y detrás del stack) en su nombre.
-	 * @param string $stack Identificador del stack del que se desean recuperar sus tablas. Por defecto es el stack actual.
-	 * @param string $database Identificador de la base de datos.
-	 */
-	public static function showTablesFromStack($stack = EWSTACK, $database = null) {
-		$tables = self::showTables($database);
-		$res = array();
-		foreach ($tables as $table)
-			if (preg_match("/_" . $stack . "_/", $table))
-				$res[] = $table;
-		return $res;
-	}
-
-	/**
-	 * Comprueba si existe la tabla en la base de datos actual.
-	 * @param $table Nombre de la tabla.
-	 * @return boolean true si la tabla $table existe en la BD actual, false en otro caso.
+	 * Check if table exists in current database.
+	 * @param $table Table name.
+	 * @return boolean true if table exists, false otherwise.
 	 * */
 	public static function existsTableInCurrentDatabase($table) {
 		$tableList = self::showTables();
 		return in_array($table, $tableList);
 	}
 
+	
 	/**
-	 * Comprueba si existe la tabla en la base de datos actual.
-	 * @param $table Nombre de la tabla.
-	 * @return boolean true si la tabla $table existe en la BD actual, false en otro caso.
+	 * Check if table exists in current database.
+	 * @param $table Table name.
+	 * @return boolean true if table exists, false otherwise.
 	 * */
 	public static function existsTable($table) {
 		return self::existsTableInCurrentDatabase($table);
 	}
 
-	/**
-	 * Comprueba si existe la tabla en la base de datos actual.
-	 * @param $table Nombre de la tabla.
-	 * @return boolean true si la tabla $table existe en la BD actual, false en otro caso.
-	 * */
-	public static function existsTableList($tables) {
-		foreach ($tables as $table)
-			if (!self::existsTableInCurrentDatabase(trim($table)))
-				return false;
-		return true;
-	}
 
 	/**
-	 * Ejecuta código SQL arbitrario. Sólo se permite la ejecución de código SQL que sea aceptado por el método execute de AdoDB.
-	 * @param string $sqlCode Código SQL que se desea ejecutar.
-	 * @return mixed Lo que devuelva la ejecución. Normalmente, un array o una cadena.
+	 * Executes arbitrary SQL code
+	 * @param string $sqlCode SQL code to execute.
+	 * @return mixed What the execution returns. Usually an AdoDB object.
 	 * */
 	public static function execute($sqlCode) {
 		$results = static::$db_connection->execute($sqlCode);
 		return $results;
 	}
 
+	
 	/**
-	 * Devuelve el código SQL de creación de la tabla.
-	 * @params string $tableName Nombre de la tabla cuyo SQL se va a crear.
-	 * @return string Código SQL de la tabla.
+	 * Return create table SQL code.
+	 * @params string $tableName Table name whose create table statement is needed.
+	 * @return string SQL code with the creation of table $tableName.
 	 */
 	public static function getCreateTable($tableName) {
-		$res = static::$db_connection->getRow("SHOW CREATE TABLE `$tableName`");
-		if (!isset($res["Create Table"]) or ! is_string($res["Create Table"]))
-			return "";
-		return $res["Create Table"];
+		return static::executeSqlTemplate("create/get_from_table.twig.sql", $tableName);
 	}
+		
 
 	/**
-	 * Crea una tabla en la base de datos. NO USAR. Sólo para propósitos de experimentación.
-	 * @param string $tableName Nombre de la tabla a crear.
-	 * @param array $tableFields Campos de la tabla.
-	 * @return boolean true si la creación ha sido un éxito, false en otro caso.
+	 * Create a table in the DBMS
+	 * @param string $tableName Table name.
+	 * @param array $tableFields Table fields.
+	 * @return boolean true if creation went right, false otherwise.
 	 * */
 	public function createTable($tableName, $tableFields) {
 		return static::$db_connection->CreateTableSQL($tableName, $tableFields);
 	}
 
 	/**
-	 * Devuelve la longitud de un campo de una tabla.
-	 * @param string $table Nombre de la tabla sobre la que se ejecuta la consulta.
-	 * @param string $field Nombre del campo cuyo tamaño se desea consultar.
-	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
-	 * @return integer Tamaño en bytes del campo de la tabla.
+	 * Return the field length of a tuple.
+	 * @param string $table Table name.
+	 * @param string $field Field name.
+	 * @param array $condition Condition of the selected tuple.
+	 * @return integer Bytes of the field of the selected tuple.
 	 * */
-	private static function fieldLength($table, $field, $condition = null) {
+	private static function fieldLength($table, $field, $condition=null) {
 		$lengthField = "_length_" . $field;
 
-		$sql = "select " . static::$db_connection->length . "($field) as $lengthField from $table" . self::makeWhereCondition($condition);
+		$sql = "SELECT " . static::$db_connection->length . "($field) AS $lengthField FROM $table " . self::makeWhereCondition($condition);
 		$res = static::$db_connection->getRow($sql);
-		//print_r($res);
-		if (count($res) == 0 or $res == null or ! isset($res[$lengthField]))
+		if (count($res) == 0 or $res == null or ! isset($res[$lengthField])){
 			return null;
+		}
 		return (int) ($res[$lengthField]);
 	}
 
 	/**
-	 * Informa si un campo es nulo. NO USAR. Sólo para propósitos de depuración.
-	 * @param string $table Nombre de la tabla sobre la que se ejecuta la consulta.
-	 * @param string $field Nombre del campo cuyo nulidad se desea consultar.
-	 * @param array $order Orden que ha de llevar. Array con pares <campo>=>"asc|desc" que generarán una cláusula ORDER BY <campo>=>ASC|DESC. Por defecto es null.
-	 * @return boolean true si el campo es null, false en otro caso.
+	 * Check if value in a field is NULL.
+	 * @param string $table Table name.
+	 * @param string $field Field name.
+	 * @param array $condition Condition of the selected tuple.
+	 * @return boolean true if field value is NULL, false otherwise.
 	 * */
 	public static function fieldIsNull($table, $field, $condition = null) {
 		$length = self::fieldLength($table, $field, $condition);
-		//print "Length es";
-		if ($length == null)
+		if ($length == null){
 			return true;
+		}
 		return false;
 	}
 
@@ -1510,39 +1293,65 @@ class DB {
 
 	protected static function asTableName($tableName) {
 		$pos = strpos($tableName, self::UNIQUE_PREFIX_NUMBER_SUFFIX);
-		if ($pos === false)
+		if ($pos === false){
 			return $tableName;
+		}
 		return substr($tableName, 0, $pos);
 	}
 
-		/**
-	 * Unión natural de tablas con condiciones complejas.
-	 * Implementa el inner join de las tablas que se le pasa, como lo hace. Interpreta que la primera tabla es la que va en el select y añade tantos inner join como tablas se añadan
-	 * @param Array $tables Array Contiene los nombres de las tablas sobre los que vamos a efectuar el inner join, para cada tabla se le puede indicar que campos son los que debe obtener, si no se le indica nada obtiene *, si no se necesita nada se le pasa array()
-	 * @param Array $onConditions Es mixto, si sólo va un array interpreta que es la parte on, es de la forma "tabla_i-1.campo"=>"tabla_i.campo". Puede llevar indie "on" que indica que es la condición on y "extra" para añadir condición sobre la tabla_i
-	 * @param Array $whereConditions Array de condiciones sobre tables_0
-	 * @param Array $params, opciones de configuración para personalizar el inner
-	 * 	"order" => es un array "table_name"=>array("field"=>ORDER, "field"=>ORDER)
-	 * 	"limit" => int valor para limitar los resultados de búsqueda
-	 * 	"debug" => para que te muestre la consulta completa y detenga la ejecución
-	 * 	"distinct" => indica si los resultados son únicos o no
-	 * 	"explain" => añade la cláusula explain a la plataforma
-	 * 	"join" => añade la cláusula explain a la plataforma
-	 * 	"straight_join" => añade el parámetro STRAIGHT_JOIN en el select, OJO sólo utilizar cuando no quede más remedio
-	 * @return array Array de arrays con los valores de los campos de la/s tabla/s indicada/s.
+	
+	/**
+	 * Natural join between several tables.
+	 * Implements INNER JOIN between several tables.
+	 * - First key in $tables is main table
+	 * - The other tables are joined to main table.
+	 * 
+	 * @param array $tables Array Hash with the tables as the keys. The values are the fields to be selected of each table. If "*", all fields will be selected.
+	 * @param array $onConditions Conditions for each table. For each table (table_i), can contains two keys:
+	 * - "on" => conditions that link fields of different tables "tabla_i-1.field"=>"tabla_i.field"
+	 * - "extra" => extra conditions  on table_i
+	 * @param Array $whereConditions Conditions on main table (first table in $tables).
+	 * @param Array $params extra options to custom INNER JOIN results:
+	 * 	"order" => order results "table_name"=>array("field"=>ORDER, "field"=>ORDER)
+	 * 	"limit" => limit results
+	 * 	"debug" => show generated SQL and stops
+	 * 	"distinct" => should the results be distinct?
+	 * 	"explain" => adds EXPLAIN keyword to obtain metainformation about performance.
+	 * 	"straight_join" => adds STRAIGHT_JOIN in SELECT.
+	 * @return array Array of arrays with the values of the selected fields.
 	 * */
 	public static function join($tables, $onConditions=null,  $whereConditions=null, $params=null)
 	{
 		$rs = static::joinAsRecordSet($tables, $onConditions,  $whereConditions, $params);
 		return $rs->getArray();
 	}
-	
+
+	/**
+	 * Natural join between several tables.
+	 * Implements INNER JOIN between several tables.
+	 * - First key in $tables is main table
+	 * - The other tables are joined to main table.
+	 * 
+	 * @param array $tables Array Hash with the tables as the keys. The values are the fields to be selected of each table. If "*", all fields will be selected.
+	 * @param array $onConditions Conditions for each table. For each table (table_i), can contains two keys:
+	 * - "on" => conditions that link fields of different tables "tabla_i-1.field"=>"tabla_i.field"
+	 * - "extra" => extra conditions  on table_i
+	 * @param Array $whereConditions Conditions on main table (first table in $tables).
+	 * @param Array $params extra options to custom INNER JOIN results:
+	 * 	"order" => order results "table_name"=>array("field"=>ORDER, "field"=>ORDER)
+	 * 	"limit" => limit results
+	 * 	"debug" => show generated SQL and stops
+	 * 	"distinct" => should the results be distinct?
+	 * 	"explain" => adds EXPLAIN keyword to obtain metainformation about performance.
+	 * 	"straight_join" => adds STRAIGHT_JOIN in SELECT.
+	 * @return recordset Recordset with the values of the selected fields.
+	 * */	
 	public static function joinAsRecordSet($tables, $onConditions=null,  $whereConditions=null, $params=null)
 	{
 		$tablesDict = array();
 		$tablesOrig = array();
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		// Obtenemos los campos, si no es un array cogemos el *
+
+		// Fields to select, if not array, take all (*)
 		$fieldSQL = "";
 		$i = 0;
 		foreach($tables as $table_name=>$fields){
@@ -1552,10 +1361,11 @@ class DB {
 				$fieldSQL .= "tabla_$i.*,";
 			}
 			else{
-				if(!empty($fields))
+				if(!empty($fields)){
 					foreach($fields as $f){
 						$fieldSQL .= "tabla_$i.$f,";
 					}
+				}
 
 			}
 			
@@ -1564,16 +1374,17 @@ class DB {
 			$i++;
 		}
 
+		// Erasing the last comma
 		$fieldSQL = substr($fieldSQL, 0, strlen($fieldSQL)-1);
 
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		// obtenemos las condiciones del on
+		// Getting ON conditions
 		$i = 1;
 		$innerSql = "";
 		
 		$join = "INNER";
-		if(isset($params["join"]))
+		if(isset($params["join"])){
 			$join = strtoupper($params["join"]);
+		}
 		
 		$extraWhereCond = array();	
 		foreach($onConditions as $oC){
@@ -1595,9 +1406,9 @@ class DB {
 					}
 				}
 				$extraJoin = " AND ".static::makeWhereCondition($extraJoinCond, false);
-				//$extraJoin = preg_replace("#\s* WHERE \s*#"," AND ",$extraJoin);
 			}
-			//como el left join obtiene resultados distintos segun pongas condiciones en el ON o en el WHERE, permitimos que se definan donde quieren ir las condiciones que no relacionan tablas
+			
+			// Conditions 
 			if(isset($oC["where"]) && !empty($oC["where"])){
 				$extraJoinCond = array();
 				foreach($oC["where"] as $field=>$cond){
@@ -1613,8 +1424,8 @@ class DB {
 			$innerSql .= "$join JOIN {$tablesDict[$i]} tabla_$i ON $joinCond $extraJoin \n";
 			$i++;
 		}
-		//condiciones sobre la tabla_0 para hacer el where
 		
+		// Table 0 conditions in WHERE clause
 		if(!is_null($whereConditions)){
 			
 			foreach($whereConditions as $field=>$cond){
@@ -1627,25 +1438,26 @@ class DB {
 			}
 		}
 		$where = static::makeWhereCondition($extraWhereCond);
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		// Generación de la consulta SQL
-		// Selección de tuplas
 		
+		// SQL code generation
 		$sqlDistinct = "DISTINCT";
-		if(!isset($params["distinct"]) || !$params["distinct"])
+		if(!isset($params["distinct"]) || !$params["distinct"]){
 			$sqlDistinct = "";
+		}
 		
 		$sqlExplain = "EXPLAIN";
-		if(!isset($params["explain"]) || !$params["explain"])
+		if(!isset($params["explain"]) || !$params["explain"]){
 			$sqlExplain = "";
+		}
 			
 		$sqlStraight = "STRAIGHT_JOIN";
-		if(!isset($params["straight_join"]) || !$params["straight_join"])
+		if(!isset($params["straight_join"]) || !$params["straight_join"]){
 			$sqlStraight = "";
+		}
 
 		$sql = "$sqlExplain SELECT $sqlStraight $sqlDistinct $fieldSQL \nFROM {$tablesDict[0]} tabla_0 \n $innerSql \n$where ";
 		
-		// Si tiene un ORDEN, se lo metemos
+		// ORDER of the query
 		if(isset($params["order"]) && $params["order"] != null){
 			$ordenFinal = array();
 			foreach($params["order"] as $table_name=>$fields){
@@ -1657,20 +1469,19 @@ class DB {
 			$sql .= static::makeOrderBy($ordenFinal)."\n";
 		}
 		
-		// Si tiene un LÍMITE, se lo metemos
+		// Limit of the query
 		if(isset($params["limit"]) && $params["limit"] != null)
 			$limit = $params["limit"];
 		else
 			$limit = null;
 		
 		$limit = static::makeLimit($limit);
-		/////////////////////////////////////////////////////////////////////////////////////////////////
-		// Devolución de resultados
+		
+		// Results
 		if(isset($params["debug"])){
 			print $sql."<br/><br/>";die;
 		}
-		
-		$limit = static::makeLimit($limit);
+
 		$rs = static::$db_connection->SelectLimit($sql,$limit[1],$limit[0]);
 		
 		return $rs;
@@ -1678,16 +1489,17 @@ class DB {
 
 
 	/**
-	 * Actualiza una tabla de la base de datos.
-	 * @param string $table Nombre de la tabla a actualizar.
-	 * @param array $newValues Array asociativo con los campos y sus nuevos valores.
-	 * @param array|string Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' and field2..."
+	 * Update a table of our current database.
+	 * @param string $table Name of the table to update.
+	 * @param array $newValues Associative array with pairs of <field>=><new value>.
+	 * @param array|string SQL condition. One associative array or a string "WHERE field1='' and field2..."
 	 */
 	public static function updateFields($table, $newValues, $condition) {
-		return self::update($table, $newValues, self::makeWhereCondition($condition, false)); // No queremos que incluya el 'where' en la condición
+		return self::update($table, $newValues, self::makeWhereCondition($condition, false));
 	}
 
-	/* Método que bloquea las tablas pasadas con argumento con el tipo de bloqueo indicado.
+	
+	/* Lock tables.
 	 *
 	 * LOCK TABLES
 	  tbl_name [[AS] alias] lock_type
@@ -1697,7 +1509,7 @@ class DB {
 	  READ [LOCAL]
 	  | [LOW_PRIORITY] WRITE
 	 *
-	 * 	Formatos válidos
+	 * 	Valid formats:
 	 * lockTables(array(
 	 * 	TABLA => array("lock_type"),
 	 * 	TABLA => array("lock_type", "alias"),
@@ -1705,10 +1517,8 @@ class DB {
 	 * 	TABLA => array(array("lock_type", "alias1"), array("lock_type", "alias2"), ...)
 	 * ))
 	 * 
-	 * @param $tablas Array. Las tablas que se quieren bloquear se pasan como índice del array. Como valor de cada índice se pasa un array con uno o dos elementos donde el primero es el tipo de bloque a utilizar y el segundo el alias, en caso de querer utilizarlo, que se le da a la tabla.
-	 * @pre El usuario debe asegurarse de que el array tablas es correcto y tiene algún elemento. Aquí no se va a realizar ninguna comprobación.
+	 * @param $tablas Array. Tables that we want to be locked are index of the array. Values are the type lock and the alias.
 	 */
-
 	public static function lockTables($tablas) {
 
 		$sql = "";
@@ -1716,12 +1526,12 @@ class DB {
 			if ($sql != "")
 				$sql .= ", ";
 
-			// V2 => mantengo estos dos primeros ifs por compatibilidad hacia atrás.
-			// Formato TABLA => array("READ") o TABLA => array("WRITE") ...
+			// Legacy compatibility.
+			// Format TABLA => array("READ") o TABLA => array("WRITE") ...
 			if (count($opciones) == 1 && is_string($opciones[0])) {
 				$sql .= " " . $tabla . " " . $opciones[0];
 			}
-			// Formato TABLA => array("READ", "alias") o TABLA => array("WRITE, "alias") ...
+			// Format TABLA => array("READ", "alias") o TABLA => array("WRITE, "alias") ...
 			elseif (count($opciones) == 2 && is_string($opciones[0]) && is_string($opciones[1])) {
 				$sql .= " " . $tabla . " AS " . $opciones[1] . " " . $opciones[0];
 			}
@@ -1729,8 +1539,8 @@ class DB {
 			// You cannot refer to a locked table multiple times in a single query
 			// using the same name. Use aliases instead, and obtain a separate lock
 			// for the table and each alias.
-			// Formato TABLA => array(array("READ"), array("READ", "alias1"), array("WRITE", "alias2"), ...)
-			// o
+			// Format TABLA => array(array("READ"), array("READ", "alias1"), array("WRITE", "alias2"), ...)
+			// or
 			// TABLA => array(array("READ", "alias1"), array("READ", "alias2"), array("WRITE", "alias3"), ...)
 			else {
 				$sql2 = "";
@@ -1757,31 +1567,28 @@ class DB {
 		static::$db_connection->execute($sql);
 	}
 
-	/* Método que libera un bloqueo de tablas previo.
-	 *
+	
+	/* 
+	 * Unlock tables of a previous lock.
 	 */
-
 	public static function unlockTables() {
 
 		static::$db_connection->execute("UNLOCK TABLES");
 	}
 
-	//FUNCIONES PARA TRANSACCIONES
-	// para un correcto orden de la transacción debe hacerse lo siguiente
+	// Transaction functions
+	// USE:
 	// DBHelper::desactivateAutocommit(); //si usamos START TRANSACTION no hace falta
 	// DBHelper::startTransaction();
-	// 	operaciones de sql
-	//si hay que volver 
-	// DBHelper::rollback();
-	//si todo correcto
-	// DBHelper::commit();
-	// DBHelper::activateAutocommit();//si usamos START TRANSACTION no hace falta
+	// 	SQL OPERATIONS
+	// In case of error:
+	//   DBHelper::rollback();
+	// If everything went right:
+	//   DBHelper::commit();
+	//   DBHelper::activateAutocommit();//si usamos START TRANSACTION no hace falta
 	//
 	
-	
-	
 	private static function activateAutocommit() {
-
 		static::$db_connection->execute("SET autocommit = 1");
 	}
 
@@ -1796,7 +1603,6 @@ class DB {
 	 *  release -> 0|1 -> si se hace release o no 
 	 * 
 	 * */
-
 	public static function commit($work = null, $chain = null, $release = null) {
 		$commit_sql = "";
 
@@ -1849,11 +1655,9 @@ class DB {
 	 *   | READ ONLY
 	 * 
 	 * */
-
 	public static function startTransaction($type = "begin", $work = "", $characteristics = []) {
 
-		//con begin es necesario desactivar el autocommit;
-
+		// If using BEGIN, deactivate AUTOCOMMIT
 		if ($type === "begin")
 			$sql = "BEGIN {$work};";
 		else {
