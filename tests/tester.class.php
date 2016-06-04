@@ -80,17 +80,17 @@ class Tester{
 	 * Inicialización de la base de datos.
 	 * 	 */
 	public static function init_db(){
-		/*\lulo\management\Manager::createTables(User::CLASS_NAME);
+		\lulo\management\Manager::createTables(User::CLASS_NAME);
 		\lulo\management\Manager::createTables(Tag::CLASS_NAME);
 		\lulo\management\Manager::createTables(Photo::CLASS_NAME);
-		\lulo\management\Manager::createTables(Post::CLASS_NAME);*/
+		\lulo\management\Manager::createTables(Post::CLASS_NAME);
 	}
 	
 	public static function delete_db(){
-		/*\lulo\management\Manager::dropTables(User::CLASS_NAME);
+		\lulo\management\Manager::dropTables(User::CLASS_NAME);
 		\lulo\management\Manager::dropTables(Tag::CLASS_NAME);
 		\lulo\management\Manager::dropTables(Photo::CLASS_NAME);
-		\lulo\management\Manager::dropTables(Post::CLASS_NAME);*/
+		\lulo\management\Manager::dropTables(Post::CLASS_NAME);
 	}
 	
 	protected static function create_unique_suffix(){
