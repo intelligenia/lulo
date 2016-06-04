@@ -144,7 +144,7 @@ class Collection implements \Countable, \Iterator, \ArrayAccess
 			return $this;
 		}
 		////////////////// Collection
-		if(is_object($objects) and get_class($objects)==Collection::CLASS_NAME)
+		if(is_object($objects) and get_class($objects)==static::CLASS_NAME)
 		{
 			$this->positionIndex = $objects->positionIndex;
 			$this->count = $objects->count;
@@ -864,7 +864,7 @@ class Collection implements \Countable, \Iterator, \ArrayAccess
 					foreach($attributes as $attribute)
 					{
 						$attributeObject = $object->getAttribute($attribute);
-						if(is_object($attributeObject) and Collection::isInstanceOf($attributeObject))
+						if(is_object($attributeObject) and static::isInstanceOf($attributeObject))
 							$attributeObject = $attributeObject->toArray();
 						$objectArray[$attribute] = $attributeObject;
 					}

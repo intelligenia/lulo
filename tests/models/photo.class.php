@@ -95,7 +95,7 @@ class Photo extends \lulo\models\LuloModel{
 		
 		// Users for this object
 		if($formFieldName == "user"){
-			return \lulo\tests\models\User::dbLoadAllAsCollection();
+			return \lulo\tests\models\User::dbLoadAll();
 		}
 		return null;
 	}

@@ -109,7 +109,7 @@ class Post extends \lulo\models\LuloModel{
 		}
 		// Edition form allows selecting an user
 		if($formFieldName == "owner"){
-			return \lulo\tests\models\User::dbLoadAllAsCollection();
+			return \lulo\tests\models\User::dbLoadAll();
 		}
 		return null;
 	}
