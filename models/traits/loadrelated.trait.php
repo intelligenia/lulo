@@ -22,7 +22,7 @@ trait LoadRelated {
 	 * @param array $limit Limit with the values [offset, size].
 	 * @return array Simple array if relatinoship is *ToOne, or array of arrays if relationship type is OneToMany.
 	 * */
-	protected static function _dbLoadRelatedNoModel($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryresult"){
+	protected static function _dbLoadRelatedNoModel($relationName, $remoteCondition=[], $order=null, $limit=null, $container="query"){
 		// Database
 		$db = static::DB;
 		
@@ -230,14 +230,13 @@ trait LoadRelated {
 	
 	/**
 	* Return related object defined by relationship $relationName.
-	* @deprecated You should be using Lulo Queries instead of this method.
 	* @param array $remoteCondition Extra condition applied to remote objects. If null, it is ignored.
 	* @param array $order Order of the remote objects. E. g. ["name" => "asc, "number" => "desc"]
 	* @param array $limit Limit with the values [offset, size].
 	* @param array $container Container used for the result.
 	* @return array|collection|queryresult Array, collection or queryresult according to what is specified in $container parameter.
 	*/ 
-	public function dbLoadRelated($relationName, $remoteCondition=[], $order=null, $limit=null, $container="queryresult"){
+	public function dbLoadRelated($relationName, $remoteCondition=[], $order=null, $limit=null, $container="query"){
 		// Relationship $relationName must exist in this model
 		if(!isset(static::$RELATIONSHIPS[$relationName])){
 			throw new \UnexpectedValueException("Relationship {$relationName} does not exist in model ".static::CLASS_NAME);

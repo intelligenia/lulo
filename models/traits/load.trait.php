@@ -48,7 +48,6 @@ trait Load {
 	
 	/**
 	 * Load all objects based on string representation of this model primary key (strPk).
-	 * @deprecated You should be using Lulo Queries instead of this method.
 	 * @param array $strPks Array with several strPks.
 	 * @param array $extraConditions Extra conditions for returned objects.
 	 * @return array Array of objects that contained $strPks.
@@ -67,14 +66,13 @@ trait Load {
 	
 	/**
 	 * Load a container, array or queryresult of objects of this model that comply a condition.
-	 * @deprecated You should be using Lulo Queries instead of this method.
 	 * @param array $condition Object filtering condition.
 	 * @param array $order Order of the remote objects. E. g. ["name" => "asc, "number" => "desc"]
 	 * @param array $limit Limit with the values [offset, size].
 	 * @param string $container Container type that will be returned.
 	 * @return mixed A container witha the objects that comply with the condition.
 	*/ 
-	public static function dbLoadAll($condition=null, $order=null, $limit=null, $container="queryresult"){
+	public static function dbLoadAll($condition=null, $order=null, $limit=null, $container="query"){
 		// Database connection
 		$db = static::DB;
 		
@@ -115,7 +113,6 @@ trait Load {
 	
 	/**
 	* Load a model object that comply with a condition.
-	* @deprecated You should be using Lulo Queries instead of this method.
 	* @param array $condition Condition the returned object must comply.
 	* @return object First object that comply this condition.
 	*/ 
@@ -134,7 +131,6 @@ trait Load {
 	
 	/**
 	* Load the object according to its primary key.
-	* @deprecated You should be using Lulo Queries instead of this method. 
 	* @param array $pk is an array of pairs attribute => value. 
 	* @return object Object with that primary key if it exists. Null otherwise.
 	*/ 
@@ -146,7 +142,6 @@ trait Load {
 	
 	/**
 	 * Load an object based on the string representation of this model primary key (strPk).
-	 * @deprecated You should be using Lulo Queries instead of this method.
 	 * @param array $strPk String representation of an object primary key.
 	 * @param array $extraConditions Extra conditions for returned object.
 	 * @return array object that have a primary key equal to $strPk.
@@ -168,7 +163,6 @@ trait Load {
 
 	/**
 	* Count the number of objects that comply with a condition.
-	* @deprecated You should be using Lulo Queries instead of this method. 
 	* @param array $condition Condition of existence.
 	* @return integer Number of objects that comply with condition.
 	*/ 
@@ -184,7 +178,6 @@ trait Load {
 	
 	/**
 	* Informs if exixts an object that complies with a condition.
-	* @deprecated You should be using Lulo Queries instead of this method. 
 	* @param array $condition Condition of existence.
 	* @return boolean true exists an object that comply $condition.
 	*/ 
