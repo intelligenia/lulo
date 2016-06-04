@@ -3,127 +3,90 @@
 namespace lulo\tests\models;
 
 /**
- * Clase de usuario de ejemplo.
+ * User post in our example package.
  * @author Diego J. Romero López at intelligenia.
  * */
 class Post extends \lulo\models\LuloModel{
 
-	/******************************************************************/
-	/******************************************************************/
-	/***************** ATRIBUTOS QUE SE SOBRESCRIBREN *****************/
-	
-	/** Tabla en la que se basa esta clase */
+	/** Table name */
 	const TABLE_NAME = "post";
 	
-	/** Nombre de la clase */
+	/** Class name */
 	const CLASS_NAME = "lulo\\tests\models\Post";
 	
 	/**
-	 * Metainformación sobre la clase, se usa para mostrar en los listados
-	 * y formularios de creación y edición de objetos.
+	 * Class metainformation.
 	 * */
 	public static $META = [
-		// Descripción legible de qué representa el modelo
-		"model_description" => "Entradas de blog de cada uno de los usuarios de ejemplo del sistema Lulo. Estos modelos son de ejemplo y sólo sirven como ejemplo a los desarrolladores",
+		// Model description
+		"model_description" => "Blog post for lulo examples",
 		// Nombre legible por humanos (en singular)
-		"verbose_name" => "entrada de blog de usuario de ejemplo de LULO",
-		// Nombre legible por humanos (en plural)
-		"verbose_name_plural" => "entradas de blog de usuarios de ejemplo de LULO",
-		// Género de los nombres legibles ('m' para masculino, 'f' para femenino)
+		"verbose_name" => "blog post",
+		// Model description that can be read by humans (plural)
+		"verbose_name_plural" => "blog posts",
+		// Gender ('m' for male, 'f' for female)
 		"gender" => "f",
-		// Orden en los listados (en estilo ["campo1"=>"ASC|DESC", "campo2"=>"ASC|DESC", ...])
+		// Management list order
 		"order" => ["title"=>"ASC"]
 	];
 	
 	/**
-	 * Atributos de este modelo.
-	 * Cada elemento representa a un atributo. Cada atributo estará asociado a un campo de la base de datos.
-	 * Cada atributo tiene los siguientes metatributos:
-	 * - type: tipo de dato. Puede tomar cualquiera de los valores siguientes: string, blob, float, int. NOTA: el tipo "blob" identifica a cadenas que representan ficheros.
-	 * - subtype: tipo semántico. Si no existe, se asume que no hay ninguna restricción. Valores posibles: 
-	 *   - phone: teléfono.
-	 *   - email: correo electrónico. 
-	 *   - ddmmyyyy: fecha en formato dd/mm/yyyy.
-	 *   - doku: texto largo en formato doku.
-	 * - default: valor por defecto. Opcional.
-	 * - null: indica si el atributo puede tener el valor nulo. Opcional.
-	 * - verbose_name: descripción del atributo. Obligatorio.
-	 * - length: si el campo es una cadena, se puede incluir la longitud de éste. Opcional.
-	 * - auto: el campo se rellena de forma automática. Bien porque tiene un valor por defecto en BD o por otro motivo.
-	 * - relationship: el campo depende de la relación indicada como valor de este atributo.
-	 * - translatable: el campo es traducible.
-	 * Todo atributo que no tenga un valor por defecto o no pueda ser nulo, se asume obligatorio.
-	 * 
-	 * Notemos que aquí los atributos pueden llamarse como el desarrollador quiera
-	 * no se tienen que respetar las convenciones de _stack es el atributo del stack
-	 * y el id es el identificador único. Eso lo definiremos en la aplicación que haga
-	 * uso de este modelo.
-	 * */
+	 * Attributes
+	 * 	 */
 	protected static $ATTRIBUTES = [
-		// Clave primaria
-		"stack"=>["type"=>"string", "max_length"=>32, "default"=>TEST_STACK, "verbose_name"=>"Stack del que depende el usuario", "auto"=>true],
-		"id" => ["type"=>"int", "verbose_name"=>"Identificador único del usuario", "auto"=>true],
-		// Campos propiamente dichos
-		"title" => ["type"=>"string", "max_length"=>64, "verbose_name"=>"Título"],
-		"title_slug" => ["type"=>"string", "max_length"=>32, "verbose_name"=>"Slug del título", "auto"=>true],
-		"content" => ["type"=>"string", "subtype"=>"doku", "verbose_name"=>"Contenido de la entrada"],
-		"owner_id" => ["type"=>"int", "relationship"=>"owner", "verbose_name"=>"Identificador del usuario propietario"],
-		// Campos de fecha
-		"last_update_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Fecha de última actualización", "auto"=>true],
-		"creation_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Fecha de creación", "auto"=>true],
+		// Primary key
+		"stack"=>["type"=>"string", "max_length"=>32, "default"=>TEST_STACK, "verbose_name"=>"Web site of this post", "auto"=>true],
+		"id" => ["type"=>"int", "verbose_name"=>"Unique identifier", "auto"=>true],
+		// Data
+		"title" => ["type"=>"string", "max_length"=>64, "verbose_name"=>"Title"],
+		"title_slug" => ["type"=>"string", "max_length"=>32, "verbose_name"=>"Slug", "auto"=>true],
+		"content" => ["type"=>"string", "subtype"=>"doku", "verbose_name"=>"Post content"],
+		"owner_id" => ["type"=>"int", "relationship"=>"owner", "verbose_name"=>"User owner of this post"],
+		// Datetime fields
+		"last_update_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Last time this object was updated", "auto"=>true],
+		"creation_datetime" => ["type"=>"string", "subtype"=>"datetime", "verbose_name"=>"Creation datetime", "auto"=>true],
 	];
 	
 	
-	/** Listado de atributos que forman la clave primaria */
+	/** Primary key */
 	protected static $PK_ATTRIBUTES = ["stack", "id"];
 	
 	
 	/**
-	 * Clases con las que tiene alguna relación.
+	 * Related models.
 	 * */
 	protected static $RELATED_MODELS = ["lulo\\tests\models\User"];
 	
 	
-	/** Relaciones con otros modelos (ver Tag para ejemplos y descripción) */
 	/**
-	 * Relaciones del modelo Post
+	 * Relationships of Post model
 	 * */
 	protected static $RELATIONSHIPS = [
-		////////////////////////////////////////////////////////////////
-		// Relación con User
+		// Relationship with User
 		"owner" => [
 			"type" => "ForeignKey",
 			"model" => "lulo\\tests\models\User",
-			// Nombre legible de la relación
-			"verbose_name" => "Propietario de la entrada",
-			// Nombre de la relación inversa
+			// Relationship human name
+			"verbose_name" => "Owner of the post",
+			// Inverse relationship name
 			"related_name" => "posts",
-			// Nombre legible de la relación inversa (opcional)
-			"related_verbose_name" => "Entradas del usuario",
-			// Atributos relacionados
+			// Inverse relationship human name
+			"related_verbose_name" => "User posts",
+			// Link
 			"condition" => ["owner_id"=>"id"],
-			// Nullable indica que permite el valor "ninguno"
+			// It is not nullable
 			"nullable" => false,
-			// Una relación readonly sólo permite consulta
+			// It is not readonly
 			"readonly" => false,
-			// Indica qué ocurre cuando se elimina el objeto padre
-			// Se han de eliminar las fotos en cascada
+			// On user deletion, the posts are also deleted
 			"on_master_deletion" => "delete"
 		]
 	];
 
-	/************* FIN DE ATRIBUTOS QUE SE SOBRESCRIBREN **************/
-	/******************************************************************/
-	/******************************************************************/
-	
-		/******************************************************************/
-	/******************************************************************/
-	/******************* MÉTODOS QUE SE SOBRESCRIBREN *****************/
 	
 	/**
-	 * Representación de este objeto como cadena.
-	 * Útil para listados y administración.
-	 * @return Representación de este objeto como cadena
+	 * Representation of this object as a string.
+	 * @return string Title of the post.
 	 * */
 	public function str(){
 		return $this->title;
@@ -131,29 +94,20 @@ class Post extends \lulo\models\LuloModel{
 	
 	
 	/**
-	 * Valores de los campos que son de tipo select y multiselect del
-	 * formulario de creación y edición para este modelo.
-	 * Si es null, no tienen ningún valor asociado.
-	 * @param string $formFieldName Nombre del campo predeterminado.
-	 * @param object $object Objeto que indica si se ha de obtener el valor del campo para el formulario de edición.
-	 * @return mixed Array de valores con  . Si es null, se asume que no hay valor predeterminado para ese campo.
+	 * Values for foreign key fields
 	 * */
 	public static function formValues($formFieldName, $object=null){
-		// Lo primero es ver si hay una implementación en el padre
-		// en cuyo caso, eso me vale
+		
 		$values = parent::formValues($formFieldName, $object);
 		if(!is_null($values)){
 			return $values;
 		}
 		
-		////////////////////////
-		// Para formulario de creación
+		// Creation form
 		if(is_null($object)){
 			return null;
 		}
-		////////////////////////
-		// Para formulario de edición
-		/// Posibles valores para el campo de propietario de este Post
+		// Edition form allows selecting an user
 		if($formFieldName == "owner"){
 			return \lulo\tests\models\User::dbLoadAllAsCollection();
 		}
@@ -162,38 +116,33 @@ class Post extends \lulo\models\LuloModel{
 	
 	
 	/**
-	 * Comprueba que los campos son correctos a la hora de CREAR
-	 * un objeto de este modelo.
-	 * @param array $data Array con los campos recibidos por formulario.
+	 * Clean creation fields
 	 * */
 	public static function cleanCreation($data){
-		$data = parent::cleanCreation($data);
-		$data["stack"] = TEST_STACK;
-		$data["title_slug"] = \DB::dbMakeUniqueLargeSlug($data["title"], 64, static::getTableName(), "title");
+		$cleaned_data = parent::cleanCreation($data);
+		$cleaned_data["stack"] = TEST_STACK;
+		$cleaned_data["title_slug"] = \lulo\db\DB::dbMakeUniqueLargeSlug($data["title"], 64, static::getTableName(), "title");
 		$now = (new \DateTime())->format('Y-m-d H:i:s');
-		$data["creation_datetime"] = $now;
-		$data["last_update_datetime"] = $now;
-		return $data;
+		$cleaned_data["creation_datetime"] = $now;
+		$cleaned_data["last_update_datetime"] = $now;
+		return $cleaned_data;
 	}
 	
 	
 	/**
-	 * Comprueba que los campos son correctos a la hora de EDITAR
-	 * un objeto existente de este modelo.
-	 * @param array $data Array con los campos recibidos por formulario.
+	 * Clean edition fields
 	 * */
 	public static function cleanEdition($data){
-		$data = parent::cleanEdition($data);
+		$cleaned_data = parent::cleanEdition($data);
 		// Actualización de la fecha de última actualización
 		$now = (new \DateTime())->format('Y-m-d H:i:s');
-		$data["last_update_datetime"] = $now;
-		return $data;
+		$cleaned_data["last_update_datetime"] = $now;
+		return $cleaned_data;
 	}
 	
 	
 	/**
-	 * Condición implícita de carga/edición/eliminación.
-	 * Todos los objetos con los que trabaje este modelo deberán cumplirla.
+	 * Implicit condition.
 	 * @return array Array con la condición implícita.
 	 * */
 	public static function implicitBaseCondition(){
@@ -204,7 +153,7 @@ class Post extends \lulo\models\LuloModel{
 	
 	
 	/*
-	-- SQL de esta tabla:
+	-- SQL for this table:
 	-- START SQL
 	CREATE TABLE `post` (
 	 `stack` varchar(128) CHARACTER SET ascii NOT NULL,
@@ -216,15 +165,13 @@ class Post extends \lulo\models\LuloModel{
 	 `creation_datetime` datetime NOT NULL,
 	 `last_update_datetime` datetime NOT NULL,
 	 PRIMARY KEY (`id`)
-	) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Entradas de blog de los usuarios'
+	) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Lulo example table for posts'
 	-- END SQL
 	*/
 	
 }
 
 /*
- * Inicialización obligatoria, se ha de llamar a este método estático
- * una vez declarada la clase para poder iniciar (entre otras cosas, las
- * relaciones inversas.
+ * Mandatory initialization.
  * */
 Post::init();

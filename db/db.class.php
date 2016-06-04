@@ -1667,6 +1667,74 @@ class DB {
 		static::$db_connection->execute($sql);
 	}
 
+	
+	/**
+	 * Creates an unique slug.
+	 * @param string $text Text that will be converted to slug.
+	 * @param integer $limit Maximum size of the slug.
+	 * @param string $tableName Table that will store the slug.
+	 * @param string $field Field that will store the slug.
+	 * @param array $extraCondition Extra condition.
+	 * @return string Unique slug based on $text.
+	 */
+	public static function dbMakeUniqueLargeSlug($text, $limit, $tableName, $field, $extraCondition=null ) {
+		if ($extraCondition == null){
+			$extraCondition = array();
+		}
+
+		$slug = static::makeLargeSlug($text, $limit);
+		if (empty($slug)){
+			$slug = "xyzzy";
+		}
+
+		$condition = array($field => $slug);
+		if ($extraCondition != null and is_array($extraCondition) and count($extraCondition) > 0){
+			$condition = array_merge($condition, $extraCondition);
+		}
+		$i = 2;
+		$res = static::getOne($tableName, $field, $condition);
+		$existe = is_string($res);
+		while ($existe) {
+			$slugAux = $slug;
+			// Suffix to make slug unique in the table
+			$suffix = "-" . $i;
+			// Cut the slug to obey limit size
+			if (strlen($slug) == $limit) {
+				$slugAux = substr($slug, 0, $limit - strlen($suffix));
+			}
+			$condition[$field] = $slugAux . $suffix;
+
+			$res = static::getOne($tableName, $field, $condition);
+			$existe = is_string($res);
+			$i++;
+		}
+		return $condition[$field];
+	}
+	
+	
+	/**
+	 * Convert $text to a slug of maximum size $limit.
+	 * @param string $text Text that will be converted to slug.
+	 * @param integer $limit Maximum size of the generated slug.
+	 * 	 */
+	protected static function makeLargeSlug($text, $limit){
+		$text = trim($text);
+		$text = mb_strtolower( $text, "UTF-8"); // lowercase		
+		$text = preg_replace('/á|à|ä|â|æ|ª/','a', $text);
+		$text = preg_replace('/é|è|ë|ê|€/','e', $text);
+		$text = preg_replace('/í|ì|ï|î/','i', $text);
+		$text = preg_replace('/ó|ò|ö|ô|ø|º/','o', $text);
+		$text = preg_replace('/ú|ù|ü|û/','u', $text);
+		$text = preg_replace('/ñ|ń/','n', $text);
+		$text = preg_replace( '/[^a-z0-9- ]/', '', $text ); // delete all non-ascii chars
+		$text = preg_replace( '/\s+/', '-', $text ); // replace spaces with dashes
+		$text = preg_replace( '/(\-+)/', '-', $text ); // delete multiple dashes
+		$text = preg_replace( '/(\_+)/', '-', $text ); // delete _
+		if(is_integer($limit) and $limit>0){
+			$text = substr($text, 0, $limit);
+		}
+		return $text;
+	}
 }
 
 ?>
