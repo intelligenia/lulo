@@ -5,7 +5,7 @@ A minimal ORM for PHP inspired by Django.
 This is a small and easy to use ORM based in Django's ORM API for PHP.
 
 # Requirements
-PHP 5.4 and dependences installed by [composer](https://getcomposer.org/) (AdoDB and Twig template syste).
+PHP 5.4 and dependences installed by [composer](https://getcomposer.org/) ([AdoDB](http://adodb.org/dokuwiki/doku.php) and [Twig template system](http://twig.sensiolabs.org/)).
 
 # Documentation
 
@@ -30,7 +30,10 @@ This local configuration file will be loaded automatically from **configuration.
 
 ## API
 
-From now on, only in Spanish:
+- [API](docs/API.md)
+- [Queries](docs/Queries.md)
+
+Extended documents:
 - [Lulo](docs/Lulo-ES.pdf)
 - [LuloQuery](docs/LuloQuery-ES.pdf)
 
@@ -113,6 +116,16 @@ class User extends \lulo\models\LuloModel{
 User::init();
 ```
 
+# Extending Lulo
+
+## Adding new DBMS SQL templates
+Add a new folder in sql_templates with the name you will identify your DBMS (mssql2012, for example).
+
+Overwrite the queries you need. Lulo template system will load first the templates you
+specify here and if it doesn't find the template, will try to load it from the _default
+folder.
+
+
 # TODO
 
 - ~~Allow models to dynamically change of table.~~ It can be done by reimplementing **getTableName** method.
@@ -123,7 +136,7 @@ User::init();
 - Migrations.
 
 # License
-MIT License.
+[MIT License](LICENSE).
 
 # Authors
 - Lulo and Lulo query created by the team leader and main developer of this project:
