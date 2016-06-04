@@ -6,7 +6,7 @@ require LULO_DIR__DEPENDENCES__VENDOR . "/autoload.php";
 
 
 /**
- * Dastabase abstraction layer.
+ * Database abstraction layer.
  * Contains deprecated operations like 
  */
 class DB {
@@ -352,26 +352,18 @@ class DB {
 		return $new_data_sql;
 	}
 
-	/** Actualización de datos (UPDATE) que tiene en cuenta las peculiaridades del SGBD en
-	 * el tratamiento de BLOBs y CLOBs
-	 *
-	 * Los datos en $data se reciben sin los caracteres especiales citados. Este método ya
-	 * se encarga de hacer eso. La claúsula WHERE ($where) <strong>sí</strong> debe ir con
-	 * los caracteres especiales citados.
+	
+	/** Updating of data (UPDATE).
 	 *
 	 * En $data no es necesario que aparezcan todos los campos de la tupla, tan sólo aquellos que
 	 * se desea actualizar.
 	 *
-	 * NOTA: Las condiciones indicadas en la cláusula WHERE no pueden hacer referencia a los
-	 * campos de tipo BLOB o CLOB si el SGBD es Oracle
-	 *
-	 * @param string $tname nombre de la tabla donde hacer la inserción
-	 * @param array $data array asociativo con los nombres de campo como clave y sus valores asociados de
-	 *              las columnas que se van a actualizar
-	 * @param string $where cláusula WHERE usada en la actualización
-	 * @param mixed $blobfields array con lista de campos o string con nombres de campo separados por espacio. Campos tipo BLOB
-	 * @param mixed $clobfields array con lista de campos o string con nombres de campo separados por espacio. Campos tipo CLOB
-	 * @return boolean TRUE si la consulta se ejecutó correctamente o FALSE en caso contrario
+	 * @param string $tname Table name to make the insertion.
+	 * @param array $data array Associative array of the form <field name> => <value>
+	 * @param string $where WHERE clause for the update.
+	 * @param mixed $blobfields List of columns that are blobs.
+	 * @param mixed $clobfields List of columns that are clobs.
+	 * @return boolean true if query went right, false otherwise.
 	 */
 	public static function update($tname, &$data, $where = "", $blobfields = array(), $clobfields = array()) {
 
@@ -381,25 +373,23 @@ class DB {
 		if (is_string($clobfields))
 			$clobfields = preg_split('/ +/', $clobfields);
 
-		//Calculamos el tamaño máximo de los BLOBs para que la consulta final no exceda el tamaño máximo de consulta
+		// Max size of blobs
 		$num_blobs = count($blobfields) + count($clobfields);
 		if ($num_blobs > 0)
 			$max_packet = static::BLOB_MAX_PACKET_LENGTH / $num_blobs;
 
-		// convertir cadenas vacías en IS NULL en las condiciones (en Oracle la cadena vacía
-		// es igual a NULL)
+		// Convert empty strings to IS NULL
 		$where = preg_replace('/=\s*((\'\')|(""))/', " IS NULL ", $where);
 		$where = preg_replace('/((!=)|(<>))\s*((\'\')|(""))/', " IS NOT NULL ", $where);
 
-		// lista de campos con valores "normales" y LOBs convertidos a NULL
+		// Non-blob attributes
 		foreach ($data as $field => $value) {
 			if (in_array($field, $blobfields) || in_array($field, $clobfields)) {
 				$new_data[$field] = "";
 				if (!in_array(static::DRIVER, array("oci8", "oci8po"))) {
-					//Todo el control de tamaño máximo de consulta lo hacemos para otros DBMSs que no son Oracle, ya que este tiene su propio mecanismo para BLOBs
+					// Only MySQL needs blob management
 					if (strlen($value) < $max_packet) {
-						//Aunque sea BLOB, si contiene pocos datos, lo insertamos directamente en la consulta.
-						//Así optimizamos los accesos a la BD
+						// If blobs are small enough, updated them directly
 						$new_data[$field] = $value;
 						unset($blobfields[array_search($field, $blobfields)]);
 						unset($clobfields[array_search($field, $clobfields)]);
@@ -410,15 +400,14 @@ class DB {
 			}
 		}
 
-		/// Insertar campos que no son blob
-		// Para cada valor, le metemos su valor especial si hace falta
+		/// Update non-blob fields
+		// Escape of values
 		$new_data_sql = self::convertDataArrayToSQLUpdateString($new_data);
-		// Generación del SQL de inserción
+		// SQL generation
 		$updateSQL = "UPDATE $tname SET $new_data_sql WHERE $where";
-		#print $updateSQL." <br>\n";
-		//die();
+		// SQL execution
 		$ok = static::$db_connection->Execute($updateSQL);
-		// BLOBs y CLOBs. Construir clausula where y hacer actualizaciones
+		// BLOBs & CLOBs update
 		if ($ok) {
 			foreach ($blobfields as $field) {
 				if ($ok !== false && isset($data[$field]))
@@ -441,58 +430,63 @@ class DB {
 	}
 
 	
-	/** Comparación de cadenas dentro de una consulta SQL con comprobación de NULL en Oracle
+	/**
+	 * Test if a field is equal to a value.
+	 * Oracle needs some tweaking.
 	 *
-	 * Este método sirve para hacer la comparación de igualdad de cadenas teniendo en cuenta que
-	 * en Oracle las cadenas vacías se tratan como NULL.
+	 * Equallity comparisons are different in Oracle:
 	 *
-	 * Por ejemplo, la siguiente consulta en MySQL es correcta:
-	 * <code>SELECT * FROM tabla WHERE campo=""</code>
+	 * For example, in MySQL this statement is right:
+	 * <code>SELECT * FROM table WHERE field=""</code>
 	 *
-	 * En Oracle, la misma consulta hay que hacerla de la siguiente manera:
-	 * <code>SELECT * FROM tabla WHERE campo IS NULL</code>
+	 * Oracle needs some changes:
+	 * <code>SELECT * FROM table WHERE field IS NULL</code>
 	 *
-	 * Este método abstrae las dos sintaxis. La forma de usarlo es:
-	 * <code>$sql="SELECT * FROM tabla WHERE campo" . DB::strEq($valor);</code>
+	 * This method hides this strange behavior to the developer
+	 * <code>$sql="SELECT * FROM table WHERE field" . DB::strEq($value);</code>
 	 *
-	 * Si $valor es la cadena vacía y el SGBD es Oracle automáticamente pone "IS NULL"
+	 * If $value is empty and the DBMS is Oracle, the comparison is replaced by "IS NULL"
 	 *
 	 * @see strNotEq
-	 * @param string $value cadena sin los caracteres especiales citados con el valor
-	 * @return string cadena adaptada al SGBD con los caracteres especiales citados
+	 * @param string $value Value to compare the field
+	 * @return string Adapted string comparison to the particularities of some DBMS.
 	 */
 	public static function strEq($value) {
 		if (in_array(static::DRIVER, array("oci8", "oci8po"))) {
-			if ((is_string($value) && empty($value)) || is_null($value))
+			if ((is_string($value) && empty($value)) || is_null($value)){
 				return " IS NULL ";
+			}
 		}
 		else {
-			if (is_null($value))
+			if (is_null($value)){
 				return " IS NULL ";
+			}
 		}
 
 		return "=" . static::$db_connection->qstr($value) . " ";
 	}
 
-	/** Comparación de cadenas dentro de una consulta SQL con comprobación de NULL en Oracle
+	
+	/**
+	 * Test if a field is different to a value.
+	 * Oracle needs some tweaking.
 	 *
-	 * Este método sirve para hacer la comparación de igualdad de cadenas teniendo en cuenta que
-	 * en Oracle las cadenas vacías se tratan como NULL.
+	 * Equallity comparisons are different in Oracle:
 	 *
-	 * Por ejemplo, la siguiente consulta en MySQL es correcta:
-	 * <code>SELECT * FROM tabla WHERE campo!=""</code>
+	 * For example, in MySQL this statement is right:
+	 * <code>SELECT * FROM table WHERE field<>""</code>
 	 *
-	 * En Oracle, la misma consulta hay que hacerla de la siguiente manera:
-	 * <code>SELECT * FROM tabla WHERE campo IS NOT NULL</code>
+	 * Oracle needs some changes:
+	 * <code>SELECT * FROM table WHERE field IS NOT NULL</code>
 	 *
-	 * Este método abstrae las dos sintaxis. La forma de usarlo es:
-	 * <code>$sql="SELECT * FROM tabla WHERE campo" . DB::strNotEq($valor);</code>
+	 * This method hides this strange behavior to the developer
+	 * <code>$sql="SELECT * FROM table WHERE field" . DB::strEq($value);</code>
 	 *
-	 * Si $valor es la cadena vacía y el SGBD es Oracle automáticamente pone "IS NOT NULL"
+	 * If $value is empty and the DBMS is Oracle, the comparison is replaced by "IS NULL"
 	 *
 	 * @see strEq
-	 * @param string $value cadena sin los caracteres especiales citados con el valor
-	 * @return string cadena adaptada al SGBD con los caracteres especiales citados
+	 * @param string $value Value to compare the field
+	 * @return string Adapted string comparison to the particularities of some DBMS.
 	 */
 	public static function strNotEq($value) {
 		//Comento esta linea porque IS NULL / IS NOT NULL también funcionan y vienen bien en MySQL.
@@ -507,221 +501,227 @@ class DB {
 		return "<>" . static::$db_connection->qstr($value) . " ";
 	}
 
-	/*	 * ***************************************************************************************************************** */
-	/*	 * ***************************************************************************************************************** */
-	/* Métodos de ayuda de DB */
+	/* DB operations */
 
 	/**
-	 * Cuenta el número de tuplas que verifican una condición sobre una tabla determinada.
-	 * @param string $table Nombre de la tabla sobre la que se va a operar.
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' and field2...". Por defecto es null.
-	 * @return integer Número de tuplas que cumplen la condición $condition en la tabla $table.
+	 * Count the number of tuples that comply with a condition in a table.
+	 * @param string $table Table to be queried.
+	 * @param array|string $condition SQL condition as an array or as a string.
+	 * @return integer Number of tuples that comply the condition $condition in table $table.
 	 */
 	public static function count($table, $condition) {
-		$sql = "select count(*) as number_of_tuples FROM " . $table . " " . self::makeWhereCondition($condition);
-		#print_r($sql);
+		$sql = "SELECT COUNT(*) as _number_of_tuples FROM $table " . self::makeWhereCondition($condition);
 		$res = static::$db_connection->getRow($sql);
-		return $res["number_of_tuples"];
+		return $res["_number_of_tuples"];
 	}
 
+	
 	/**
-	 * Cuenta el número de tuplas que verifican una condición sobre una tabla determinada.
-	 * @param string $table Nombre de la tabla sobre la que se va a operar.
-	 * @param string $field Nombre del campo cuyo máximo se desea conocer.
-	 * @param array|string $condition Condición SQL. O bien es un array asociativo, o bien un string estilo "WHERE field1='' and field2...". Por defecto es null.
-	 * @return integer|double Valor máximo de la columan $field de acuerdo con las condiciones pasadas como parámetro..
+	 * Max value of a field.
+	 * @param string $table Table to be queried.
+	 * @param string $field Field whose max will be queried.
+	 * @param array|string $condition SQL condition as an array or as a string.
+	 * @return integer Max value of field $field for the tuples that comply the condition $condition in table $table.
 	 */
-	public static function max($table, $field, $condition = null) {
-
-		$maximo = static::$db_connection->getOne("select max($field) FROM " . $table . " " . self::makeWhereCondition($condition));
-		return $maximo;
+	public static function max($table, $field, $condition=null) {
+		$sql = "SELECT MAX($field) FROM $table " . self::makeWhereCondition($condition);
+		$max_value = static::$db_connection->getOne($sql);
+		return $max_value;
 	}
 
+
 	/**
-	 * Elimina las filas de la tabla que cumplen una condición de igualdad.
-	 * @param string $table Nombre de la tabla sobre la que se va a operar.
-	 * @param array $fields Array asociativo donde las claves son los campos de la tabla que participan en la condición where, y los valores del array son los valores que deben tener los campos para que la fila se elimine.
+	 * Delete all the tuples of the table that comply with a condition.
+	 * @param string $table Name of the table which tuples will be deleted.
+	 * @param array|string $condition SQL condition as an array or as a string.
 	 * @return boolean true si todo ha ido bien, false en otro caso.
 	 */
-	public static function deleteIfFieldsAreEqualTo($table, $fields) {
-
-		return static::$db_connection->execute("DELETE FROM " . $table . " " . self::makeWhereCondition($fields));
+	public static function delete($table, $condition) {
+		$sql = "DELETE FROM $table " . self::makeWhereCondition($condition);
+		return static::$db_connection->execute($sql);
 	}
 
+	
 	/**
-	 * Elimina las filas de la tabla que cumplen una condición de igualdad.
-	 * @param string $table Nombre de la tabla sobre la que se va a operar.
-	 * @param array $fields Array asociativo donde las claves son los campos de la tabla que participan en la condición where, y los valores del array son los valores que deben tener los campos para que la fila se elimine.
-	 * @return boolean true si todo ha ido bien, false en otro caso.
-	 */
-	public static function delete($table, $fields) {
-		return self::deleteIfFieldsAreEqualTo($table, $fields);
-	}
-
-	/**
-	 * Elimina las filas de la tabla que cumplen una condición de igualdad.
-	 * @param string $table Nombre de la tabla sobre la que se va a operar.
-	 * @param string $field Nombre del campo que participará en la cláusula where.
-	 * @param string $value Valor del campo que debe tener éste para que se elimine su fila.
-	 * @return boolean true si todo ha ido bien, false en otro caso.
-	 */
-	public static function deleteIfFieldIsEqualTo($table, $field, $value) {
-
-		return static::$db_connection->execute("DELETE FROM " . $table . " WHERE " . $field . self::strEq($value));
-	}
-
-	/**
-	 * Genera una condición un unión natural entre dos tablas. No usar desde fuera.
-	 * @param array $joinCondition Array con las correspondencias entre columnas.
-	 * @param string $table1 Nombre de la tabla 1.
-	 * @param string $table1 Nombre de la tabla 2.
-	 * @return string SQL con la condición WHERE de la unión natural.
+	 * Create a join condition used by join operation.
+	 * @param array $joinCondition Array with the corespondence of columns.
+	 * @param string $table1 First table name.
+	 * @param string $table2 Second table name.
+	 * @return string SQL with the where condition.
 	 * */
-	public static function makeJoinCondition($joinCondition, $table1, $table2) {
+	protected static function makeJoinCondition($joinCondition, $table1, $table2) {
 		$sql = "";
-		foreach ($joinCondition as $field1 => $field2)
+		foreach ($joinCondition as $field1 => $field2){
 			$sql .= "$table1.$field1=$table2.$field2 AND ";
+		}
 		$sql = substr($sql, 0, strlen($sql) - 4);
 		return $sql;
 	}
 
+	
 	/**
-	 * Compone la cadena de selección desde una array.
-	 * @param array|string $fields Array en el que cada elemento es un campo que se va a seleccionar. Si se pasa una cadena se devuelve sin cambios.
-	 * @return string Cadena que contiene los columnas de la tabla que se seleccionarán separadas por comas.
+	 * Create field selection string from a list of fields.
+	 * @param array|string $fields List of fields. If a string is passed, it will be returned unchanged.
+	 * @return string String that contains the columns of the table that will be selected (separated by commas).
 	 */
-	public static function makeFieldsToSelect($fields, $table = null) {
+	protected static function makeFieldsToSelect($fields, $table = null) {
 		if ($table == null) {
 			$table = "";
-			if (is_array($fields))
+			if (is_array($fields)){
 				return implode(",", $fields);
-		} else
+			}
+		} else {
 			$table = $table . ".";
+		}
 
-		if ($fields == "*")
+		if ($fields == "*"){
 			return $fields;
+		}
+		
 		$sqlFields = "";
 		if (is_string($fields)) {
 			if (strpos($fields, ",") !== false) {
-				if (strpos($fields, ",") != (strlen($fields) - 1))
+				if (strpos($fields, ",") != (strlen($fields) - 1)){
 					$fields = explode(",", $fields);
-				else
+				}else{
 					$fields = substr($fields, 0, strlen($fields) - 1);
-			} else
+				}
+			} else{
 				return $fields;
+			}
 		}
-		foreach ($fields as $field)
+		foreach ($fields as $field){
 			$sqlFields .= $table . $field . ",";
+		}
+		
 		$sqlFields = substr($sqlFields, 0, strlen($sqlFields) - 1);
 		return $sqlFields;
 	}
 
-	public static function makeLimit($mylimit=null)
+	
+	/**
+	 * Creates a LIMIT array ready to be used in AdoDD SelectLimit operation.
+	 * @param mixed $mylimit Limit to be applied.
+	 * @return array Array of [offset, size] that will be used in AdoDB SelectLimit method.
+	 * 	 */
+	protected static function makeLimit($mylimit=null)
 	{
-		
-		//esta función también hay que sobrescribirla siempre debemos empezar en la posición 0
+		// Limit must start at 0 because that's the behavior of SelectLimit
 		$limit = array(0,-1);
-		
+
+		// If only a number is passed, assuming that's the number
+		// of elements to get in the query
 		if(is_numeric($mylimit)){
 			$limit = array(0,$mylimit);
 		}
 		
 		elseif(is_string($mylimit)){
-			// Si alguien ha sido tan ceporro de meterle una cadena, comprueba si tiene la palabra clave LIMIT
-			// En caso de que no, se le añade, y esperemos que haya metido el límite correctamente.
-			preg_match("#[^\d]*(\d+)[^\d]*(\d+)?#", $mylimit, $aux);//extrae los valores usados en la consulta limit
-			$limit[0] = $aux[1];
-			if(isset($aux[2]))
-				$limit[1] = $aux[2];
-			
+			// If the developer has passed a LIMIT clause (you shouldn't)
+			// Get with pregmatch the offset and the size.
+			$matches = [];
+			preg_match("#[^\d]*(\d+)[^\d]*(\d+)?#", $mylimit, $matches);
+			$limit[0] = $matches[1];
+			if(isset($matches[2])){
+				$limit[1] = $matches[2];
+			}
+
+		// If is an array, it could be 
 		}elseif(is_array($mylimit)){
+			// of the form [offset, size]
 			if(isset($mylimit[1])){
 					$limit = $mylimit;
+			
+			// of the form [size]
 			} else {
 					$limit[1] = $mylimit[0];
 			}
 		}
 
+		// Return the limit as an array to be taken by AdoDB SelectLimit
 		return $limit;
 	}
 
+	
 	/**
-	 * Genera la cláusula ORDER BY.
-	 * @param array $order Array con pares <campo>=>"asc|desc"
-	 * @return string Cadena SQL con una cláusula ORDER BY correcta.
+	 * Creates ORDER BY clausule.
+	 * @param array $order Array of pairs <field>=>"asc|desc"
+	 * @return string String with the ORDER BY clausule.
 	 */
 	public static function makeOrderBy($order = null) {
 		$st = "";
 		if ($order != null and is_array($order)) {
 			$st = "order by ";
 			foreach ($order as $k => $v) {
-				// Si es de la forma <0-9>.<atributo>, lo incluimos como table_<0-9>.<atributo>
-				if (strpos($k, ".") !== false and preg_match("/^(\d+)\.(.+)$/", $k, $matches) > 0)
+				// if the pair $k, $v is  <0-9>.<atributo>, include it as table_<0-9>.<atributo>
+				if (strpos($k, ".") !== false and preg_match("/^(\d+)\.(.+)$/", $k, $matches) > 0){
 					$k = "table_" . $matches[1] . "." . $matches[2];
-				// Añadimos a la cadena del orden
+				}
+				// Update total order
 				$st .= $k . " " . $v . ",";
 			}
-			$st = substr($st, 0, strlen($st) - 1); //elimina la última coma (",")
+			$st = substr($st, 0, strlen($st) - 1); // Delete last comma (",")
 		}
 		return $st;
 	}
 
-	/** Genera una condición WHERE completa preparada para ser añadida a una sentencia SQL.
-	 * ==Índices==
-	 * Los índices del array pasado suelen ser los campos sobre los que hacer las operaciones.
-	 * Hay dos índices especiales: "OR" y "AND". Si el índice es uno de estos dos valores, se espera
-	 * un array como valor de dicho índice, que será un array preparado para MakeWhereCondition, 
-	 * y se ejecutará de forma recursiva MakeWhereCondition para generar una subcondición, usando como 
-	 * logicalNexus el valor pasado
+	
+	/**
+	 * Create a WHERE condition to be used in SELECT, UPDATE and DELETE statements.
+	 * 
+	 * 
+	 * $fields is an array of keys and values. Keys are the fields and values are
+	 * an array with <operator> => <matching value>.
+	 * 
+	 * But it could be that we want a complex condition, so there are two special
+	 * keys: "OR" and "AND". If index is "AND" or "OR", the condition will be
+	 * taken as a "AND" or "OR" of its value arrays (recursively executed).
 	 *
-	 * Ejemplo:
+	 * EXAMPLE:
 	 *
-	 * array("OR"=> array('campo' => array ("<>" => "hola mundo"), 'campo2' => array ("<>" => "hola mundo")))
-	 *   --> Procesaría 
-	 * 				array('campo' => array ("<>" => "hola mundo"), 'campo2' => array ("<>" => "hola mundo"))
-	 * 		con logicalNexus OR, obteniendo
-	 * 				(campo <> "hola mundo" OR campo2 <> "hola mundo")
-	 * 		y luego lo añadiría con el logicalNexus establecido
+	 * array("OR"=> array('field1' => array ("<>" => "hola mundo"), 'field2' => array ("<>" => "hola mundo")))
+	 *   --> Would be
+	 * 				array('field1' => array ("<>" => "hola mundo"), 'field2' => array ("<>" => "hola mundo"))
+	 * 		with logicalNexus = OR would be
+	 * 				(field1 <> "hola mundo" OR field2 <> "hola mundo")
 	 *
-	 * ==COMPARACIONES DE IGUALDAD==
+	 * EQUALITY COMPARISONS
 	 *
-	 * Las condiciones se especifican en el argumento $fields en forma de array $campo => $valor.
-	 * En caso de que $valor sea un tipo simple de PHP (string, numérico, booleano, etc), se
-	 * hace una condición del tipo:
+	 * Where the value of the field is not an array but a PHP type (string, numeric, boolean)
+	 * that is:
+	 *	   array("field" => $value)
+	 * would be:
+	 *     WHERE field='$value'
 	 *
-	 *     WHERE campo='$valor'
 	 *
-	 * a no ser que se trate de uno de los casos especiales descritos a continuación, en cuyo caso
-	 * $valor tiene una interpretación especial.
+	 * SPECIAL CASES FOR SIMPLE VALUES
+	 * 
+	 * The above equality comparison will be ignored if the value is one of them:
 	 *
-	 * ==CASOS ESPECIALES PARA VALORES SIMPLES==
+	 *   (string) "self::<other_field>"
+	 *       Would make a comparison 'field = <other_field>'.
 	 *
-	 *   (string) "self::otrocampo"
-	 *       Se hace una comparación tipo 'campo = otrocampo'.
+	 *   (string) "value1[or]value2[or]value3[or]..."
+	 *       Would make a comparison '(field = "value1" OR field = "value2" OR ...)'.
+	 * 
+	 *		Note that [or] must have no spaces between it and the values, otherwise:
 	 *
-	 *   (string) "valor1[or]valor2[or]valor3[or]..."
-	 *       Se hace una comparación tipo '(campo = "valor1" OR campo = "valor2" OR ...)'. Si se
-	 *       dejan espacios en blanco entre los valores indicados y los [or], estos espacios
-	 *       formarán parte de los valores en la comparación final. Por ejemplo:
+	 *          field => 'hola [or] mundo'
 	 *
-	 *          campo => 'hola [or] mundo'
+	 *       would be:
 	 *
-	 *       se transformará en SQL en el código:
+	 *          ... (field="hola " OR field=" mundo") ...
 	 *
-	 *          ... (campo="hola " OR campo=" mundo") ...
-	 *
-	 *       El token especial '[or]' debe ir escrito en minúsculas, tal y como se muestra en el
-	 *       ejemplo anterior.
+	 *       '[or]' token must be lowercase.
 	 *
 	 *   (boolean) TRUE / FALSE
-	 *       Se hace una comparación tipo 'campo=TRUE' o 'campo=FALSE'.
+	 *       Would make a comparison 'field=TRUE' o 'field=FALSE'.
 	 *
 	 *   NULL
-	 *       Se hace una comparación tipo 'campo IS NULL'. Para hacer una comparación 'IS NOT NULL',
-	 *       usar el operador "ISNOTNULL" (ver más adelante).
+	 *       Would make a comparison 'field IS NULL'. To make a comparison 'IS NOT NULL',
+	 *       use operator "ISNOTNULL" (see below).
 	 *
 	 *
-	 * ==OPERADORES==
+	 * OPERATORS
 	 *
 	 * Si $valor es un array asociativo, la condición se interpreta como $operador => $argumento. El
 	 * operador puede ser cualquiera de los permitidos por SQL, usándose la notación infijo:
@@ -752,98 +752,89 @@ class DB {
 	 *
 	 *
 	 * ==OPERADORES ESPECIALES==
-	 * nota: los operadores son cadenas de texto insensibles a mays/mins
+	 * NOTE: operators are must be written in capital letters.
 	 *
 	 *   %LIKE%
-	 *       ejecuta la comparación 'campo LIKE %$valor%', haciendo escapado automático de
-	 *       los caracteres % y _ que se encuentren en $valor.
+	 *       would make the comparison 'field LIKE %$value%', escaping $value characters to avoid
+	 *		 having problems with % and _..
 	 *
 	 *   %NOTLIKE%
-	 *       ejecuta la comparación 'campo NOT LIKE %$valor%', haciendo escapado automático de
-	 *       los caracteres % y _ que se encuentren en $valor.
+	 *       would make the comparison 'field NOT LIKE %$value%', escaping $value characters to avoid
+	 *		 having problems with % and _..
 	 *   LIKE
-	 *       ejecuta la comparación 'campo LIKE $valor', SIN HACER escapado automático de
-	 *       los caracteres % y _ que se encuentren en $valor.
+	 *       would make the comparison 'field LIKE $value', without escaping $value characters to avoid
+	 *		 having problems with % and _..
 	 *
 	 *   NOTLIKE
-	 *       ejecuta la comparación 'campo NOT LIKE $valor', SIN HACER escapado automático de
-	 *       los caracteres % y _ que se encuentren en $valor.
+	 *       would make the comparison 'field NOT LIKE $value', without escaping $value characters to avoid
+	 *		 having problems with % and _..
 	 *
 	 *   ISNOTNULL
-	 *       ejecuta la comparación 'campo IS NOT NULL', ignorando el $argumento que tenga asociado
-	 *       esta operación.
+	 *       would make the comparison 'field IS NOT NULL' ignoring the value.
 	 *
 	 *   OR
-	 *       hace una unión OR con comparación de igualdad (por defecto) de cada uno de los valores recibidos,
-	 *       por ejemplo:
+	 *       OR union comaprison. For example:
 	 *
-	 *           'campo' => array('OR' => array('a','b','c', NULL))
+	 *           'field' => array('OR' => array('a','b','c', NULL))
 	 *
-	 *       se transforma en SQL en el código:
+	 *       would be:
 	 *
-	 *            ... (campo='a' OR campo='b' OR campo='c' OR campo IS NULL) ...
+	 *            ... (field='a' OR field='b' OR field='c' OR field IS NULL) ...
 
 	 *
-	 * 			Si se desea hacer otro tipo de comparación, se define de la siguiente forma:
+	 * 			If you want to make another type of comparison:
 	 *
-	 *           'campo' => array('OR' => array('>'=>'a','b', '!='=>'c', NULL))
-	 *       se transforma en SQL en el código:
+	 *           'field' => array('OR' => array('>'=>'a','b', '!='=>'c', NULL))
+	 *       would be:
 	 *
-	 *            ... (campo > 'a' OR campo='b' OR campo != 'c' OR campo IS NULL) ...
+	 *            ... (field > 'a' OR field='b' OR field != 'c' OR field IS NULL) ...
 	 * 
-	 * 			Si es para un mismo operador se puede hacer con "operardor"=>array(values,values, values);
+	 * 			If they have the same operator, yo can do "operator"=>array(values,values, values);
 	 *
-	 *           'campo' => array('OR' => array('like'=>array('a','b'), '!='=>'c', NULL))
+	 *           'field' => array('OR' => array('like'=>array('a','b'), '!='=>'c', NULL))
 	 *
-	 *       se transforma en SQL en el código:
+	 *       would be:
 	 *
-	 *            ... (campo like 'a' OR campo like 'b' OR campo != 'c' OR campo IS NULL) ...
+	 *            ... (field like 'a' OR field like 'b' OR field != 'c' OR field IS NULL) ...
 	 *
 	 *   NOT_IN
-	 *       hace una unión AND con comparación de 'distinto de' con cada uno de los valores
-	 *       recibidos, por ejemplo:
+	 *       AND operator for the different than operator:
 	 *
-	 *           'campo' => array('NOT_IN' => array('a','b','c', NULL))
+	 *           'field' => array('NOT_IN' => array('a','b','c', NULL))
 	 *
-	 *       se transforma en SQL en el código:
+	 *       would be:
 	 *
 	 *            ... (campo<>'a' AND campo<>'b' AND campo<>'c' AND campo IS NOT NULL) ...
 	 *
 	 *   IN
-	 *       la acción IN para el array recibido, por ejemplo:
+	 *       IN operator for the included values:
 	 *
-	 *           'campo' => array('IN' => array('a','b','c', NULL, 'ISNOTNULL'))
+	 *           'field' => array('IN' => array('a','b','c', NULL, 'ISNOTNULL'))
 	 *
-	 *       se transforma en SQL en el código:
+	 *       would be:
 	 *
-	 *            ... campo IS NULL or campo IS NOT NULL OR campo in ('a','b','c')    ...
+	 *            ... field IS NULL or field IS NOT NULL OR field in ('a','b','c')    ...
 	 *
 	 *
-	 * @param mixed array $fields Array asociativo donde las claves son los campos de la tabla que
-	 *              participan en la condición where, y los valores del array son los valores
-	 *              que deben tener los campos para que la fila se seleccione.
+	 * @param mixed array $fields Associative array were the keys are the fields of the table
+	 *				and the values are arrays with operators and the values we want
+	 *				to match when executing the SQL statement.
 	 *
-	 *              string con la cláusula WHERE completa
+	 *              string WHERE condition.
 	 *
-	 * @param bool  $includeWhereKeyword Booleano que hace que se incluye la palabra reservada
-	 *              WHERE. Por defecto está a TRUE. Si se le pasa una cadena se toma este parámetro
-	 *              como el parámetro $table y al $includeWhereKeyword se le mete FALSE.
+	 * @param bool  $includeWhereKeyword Booleano Should we need to include where
+	 *				in the final WHERE condition? 
 	 *
-	 * @param string $table Nombre de la tabla de la que se desea generar la condición WHERE.
-	 *               Por defecto es NULL. Si el parámetro $includeWhereKeyword es una cadena,
-	 *               se le asignará ese valor.
+	 * @param string $table Table name used in the condition generation. By default is NULL.
+	 *				If $includeWhereKeyword is a string, $table will be that value.
 	 *
-	 * @param string $logicalNexus Operación lógica que se ejecutará entre las subcondiciones.
-	 *               Por defecto es "AND".
+	 * @param string $logicalNexus Logical operator that will be used. By default is "AND".
 	 *
-	 * @return string Devuelve una cadena con la condición WHERE generada.
+	 * @return string Return a string with the WHERE condition.
 	 */
 	public static function makeWhereCondition($fields, $includeWhereKeyword = true, $table = null, $logicalNexus = "AND") {
-		//print __METHOD__."</br>";
-		//var_dump($fields);
-		//print_r($fields);
-		// Si no se especifica como segundo parámetro un valor booleano pero sí una cadena,
-		// se considera que se desea introducir una condición sin where pero específica de una tabla
+		// if the second parameter is a string, we suppose that the developer doesn't
+		// want to include WHERE but for one specific table
 		if (is_string($includeWhereKeyword)) {
 			$table = $includeWhereKeyword;
 			$includeWhereKeyword = false;
@@ -851,131 +842,100 @@ class DB {
 
 		$where = "";
 
-		if ($fields == null or count($fields) == 0)
+		if ($fields == null or count($fields) == 0){
 			return "";
+		}
 
 		if (is_array($fields) and count($fields) > 0) {
 			$sqlTable = "";
 
-			// en este array se irán almacenando las partes de la condición que luego serán unidas
-			// con $logicalNexus
+			// Conditions to be joined with logical nexus conditions
 			$whereConditions = array();
 
-			if ($table != null)
+			if ($table != null){
 				$sqlTable = $table . ".";
+			}
 
 			foreach ($fields as $f => $v) {
-				// Tipos especiales de valores de campos, que son condiciones anidades
+				// Nested conditions by OR or AND
 				if ($f == "OR" || $f == "AND") {
-					$sql_anidado = "(" . static::makeWhereCondition($v, false, $table, $f) . ")";
-					$whereConditions[] = $sql_anidado;
+					$nested_sql_condition = "(" . static::makeWhereCondition($v, false, $table, $f) . ")";
+					$whereConditions[] = $nested_sql_condition;
 					continue;
 				}
 				if (is_array($v)) {
-					// Por compatibilidad hacia atrás
-					if (isset($v[0]) and count($v) == 2) {
-						// en el caso de que sea un array de la forma array($op, $valor), se
-						// convierte al nuevo formato
-						$v = array($v[0] => $v[1]);
-					}
-					// en el caso de que sea un array, de la forma array($op=>$valor)
+					// If $v is na array ($op=>$value)
 					foreach ($v as $op => $value) {
-						//print $op."<br>";flush();
-						// valores especiales para la parte $value
+						// Special values for $value
 						if (is_object($value) && ($value instanceof DateTime)) {
-							$valor = static::$db_connection->qstr($value->format("Y-m-d H:i:s"));
+							$sql_value = static::$db_connection->qstr($value->format("Y-m-d H:i:s"));
 						} elseif (is_string($value) && preg_match("/^(self::)(.+)/", $value, $matches)) {
-							$valor = $matches[2];
+							$sql_value = $matches[2];
 						} elseif (is_null($value)) {
-							$valor = "NULL";
+							$sql_value = "NULL";
 						} elseif ($value === FALSE) {
-							$valor = "FALSE";
+							$sql_value = "FALSE";
 						} elseif ($value === TRUE) {
-							$valor = "TRUE";
+							$sql_value = "TRUE";
 						} elseif (!is_array($value)) {
-							$valor = static::$db_connection->qstr($value);
+							$sql_value = static::$db_connection->qstr($value);
 						}
 
-						// operadores especiales (en $op)
+						// Specials operator (in $op)
 						if (mb_strtoupper($op) == "%LIKE%") {
-							$valor = addcslashes($valor, "%_");
-
-							// eliminar ' al principio y final de la cadena que haya podido poner
-							// anteriormente qstr()
-							if ($valor[0] == "'")
-								$valor = substr($valor, 1);
-
-							if ($valor[strlen($valor) - 1] == "'")
-								$valor = substr($valor, 0, strlen($valor) - 1);
-
-							$whereConditions[] = "{$sqlTable}{$f} LIKE '%{$valor}%'";
+							$sql_value = addcslashes($sql_value, "%_");
+							$sql_value = static::cleanValueForLike($sql_value);
+							$whereConditions[] = "{$sqlTable}{$f} LIKE '%{$sql_value}%'";
 						}
 						elseif (mb_strtoupper($op) == "%NOTLIKE%") {
-							$valor = addcslashes($valor, "%_");
-
-							// eliminar ' al principio y final de la cadena que haya podido poner
-							// anteriormente qstr()
-							if ($valor[0] == "'")
-								$valor = substr($valor, 1);
-
-							if ($valor[strlen($valor) - 1] == "'")
-								$valor = substr($valor, 0, strlen($valor) - 1);
-
-							$whereConditions[] = "{$sqlTable}{$f} NOT LIKE '%{$valor}%'";
+							$sql_value = addcslashes($sql_value, "%_");
+							$sql_value = static::cleanValueForLike($sql_value);
+							$whereConditions[] = "{$sqlTable}{$f} NOT LIKE '%{$sql_value}%'";
 						}
 						elseif (mb_strtoupper($op) == "LIKE") {
-							// eliminar ' al principio y final de la cadena que haya podido poner
-							// anteriormente qstr()
-							if ($valor[0] == "'")
-								$valor = substr($valor, 1);
-
-							if ($valor[strlen($valor) - 1] == "'")
-								$valor = substr($valor, 0, strlen($valor) - 1);
-
-							$whereConditions[] = "{$sqlTable}{$f} LIKE '{$valor}'";
+							$sql_value = static::cleanValueForLike($sql_value);
+							$whereConditions[] = "{$sqlTable}{$f} LIKE '{$sql_value}'";
 						}
 						elseif (mb_strtoupper($op) == "NOTLIKE") {
-							// eliminar ' al principio y final de la cadena que haya podido poner
-							// anteriormente qstr()
-							if ($valor[0] == "'")
-								$valor = substr($valor, 1);
-
-							if ($valor[strlen($valor) - 1] == "'")
-								$valor = substr($valor, 0, strlen($valor) - 1);
-
-							$whereConditions[] = "{$sqlTable}{$f} NOT LIKE '{$valor}'";
+							$sql_value = static::cleanValueForLike($sql_value);
+							$whereConditions[] = "{$sqlTable}{$f} NOT LIKE '{$sql_value}'";
 						}
 						elseif (mb_strtoupper($op) == "IS NOT" and is_null($value)) {
 							$whereConditions[] = "{$sqlTable}{$f} IS NOT NULL";
 						} elseif (mb_strtoupper($op) == "ISNOTNULL") {
 							$whereConditions[] = "{$sqlTable}{$f} IS NOT NULL";
 						} elseif (mb_strtoupper($op) == "OR") {
-							if (!is_array($value))
-								trigger_error("se esperaba un array de valores para el operador 'OR'", E_USER_ERROR);
+							if (!is_array($value)){
+								throw new \InvalidArgumentException("An array was expected for OR operator");
+							}
 
 							if (!empty($value)) {
 								$conditionParts = array();
 								foreach ($value as $o => $val) {
-									if (is_numeric($o))
+									if (is_numeric($o)){
 										$o = "=";
-									if (mb_strtoupper($o) == "ISNOTNULL" || (!is_array($val) && mb_strtoupper($val) == "ISNOTNULL"))
+									}
+									if (mb_strtoupper($o) == "ISNOTNULL" || (!is_array($val) && mb_strtoupper($val) == "ISNOTNULL")){
 										$conditionParts[] = "{$sqlTable}{$f} IS NOT NULL";
-									elseif (is_null($o) || is_null($val))
+									}elseif (is_null($o) || is_null($val)){
 										$conditionParts[] = "{$sqlTable}{$f} IS NULL";
-									else {
-										if (!is_array($val))
+									}else {
+										if (!is_array($val)){
 											$conditionParts[] = "{$sqlTable}{$f} {$o} " . static::$db_connection->qstr($val);
-										else
-											foreach ($val as $iter)
+										}else{
+											foreach ($val as $iter){
 												$conditionParts[] = "{$sqlTable}{$f} {$op} " . static::$db_connection->qstr($iter);
+											}
+										}
 									}
 								}
 
 								$whereConditions[] = "(" . implode(" OR ", $conditionParts) . ")";
 							}
 						}elseif (mb_strtoupper($op) == "NOT_IN") {
-							if (!is_array($value))
-								trigger_error("se esperaba un array de valores para el operador 'NOT_IN'", E_USER_ERROR);
+							if (!is_array($value)){
+								throw new \InvalidArgumentException("An array was expected for NOT_IN operator");
+							}
 
 							if (!empty($value)) {
 								$conditionParts = array();
@@ -986,34 +946,37 @@ class DB {
 								$whereConditions[] = "(" . implode(" AND ", $conditionParts) . ")";
 							}
 						} elseif (mb_strtoupper($op) == "IN") {
-							if (!is_array($value))
-								trigger_error("se esperaba un array de valores para el operador 'IN'", E_USER_ERROR);
+							if (!is_array($value)){
+								throw new \InvalidArgumentException("An array was expected for IN operator");
+							}
 
 							if (!empty($value)) {
 								$conditionParts = "";
 								$extraConditionPart = "";
 								foreach ($value as $val) {
-									//si en la lista de elementos le pones un null hay que sacarlo a parte
-									if ($val == null)
+									// If value is NULL, condition is special
+									if ($val == null){
 										$extraConditionPart = "{$sqlTable}{$f} IS NULL OR";
-									else if (mb_strtoupper($val) == "ISNOTNULL")
+									}else if (mb_strtoupper($val) == "ISNOTNULL"){
 										$extraConditionPart .= " {$sqlTable}{$f} IS NOT NULL OR";
-									else
+									}else{
 										$conditionParts[] = static::$db_connection->qstr($val);
+									}
 								}
 
-								if (empty($conditionParts))
+								if (empty($conditionParts)){
 									$whereConditions[] = substr($extraConditionPart, 0, -3);
-								else
+								}else{
 									$whereConditions[] = " ( $extraConditionPart {$sqlTable}{$f} IN ( " . implode(", ", $conditionParts) . ")  )";
+								}
 							}
 						} else {
-							$whereConditions[] = "{$sqlTable}{$f} {$op} {$valor}";
+							$whereConditions[] = "{$sqlTable}{$f} {$op} {$sql_value}";
 						}
 					}
 				} else {
 
-					// caso especial de valor simple: [or]
+					// Special case of OR values: [or]
 					if (strpos($v, "[or]") !== false) {
 						$vs = explode("[or]", $v);
 
@@ -1029,7 +992,7 @@ class DB {
 						continue;
 					}
 
-					// otros casos de valores simples
+					// Other simple cases
 					if (preg_match("/^(self::)(.+)/", $v, $matches)) {
 						$v = "=" . $matches[2];
 					} elseif ($v === FALSE) {
@@ -1046,16 +1009,15 @@ class DB {
 				}
 			}
 
-			// encadenar partes de la sentencia con el operador lógico definido en la llamada
-			// a este método para generar la salida final
+			// if the inclusion of WHERE is needed 
 			if ($includeWhereKeyword) {
 				$where .= " WHERE";
 			}
 
 			$where .= " " . implode(" {$logicalNexus} ", $whereConditions);
 		} else {
-			// $fields no es un array. Se asume que es una sentencia WHERE ya construida
-			// Si no tiene un WHERE delante se lo metemos
+			// if $fields is not an array, it is assumed that is a string.
+			// Insertion of WHERE if needed
 			if (!preg_match("/^where/i", $fields)) {
 				$where .= " WHERE";
 			}
@@ -1063,10 +1025,28 @@ class DB {
 			$where .= " " . $fields;
 		}
 
-		#var_dump($where);
 		return $where;
 	}
 
+	
+	/**
+	 * Clean value for like.
+	 * @param string $value Posibly a escaped string that we must clean to use with LIKE operator.
+	 * @return string Clean value for use in a LIKE condition.
+	 * 	 */
+	protected static function cleanValueForLike($value){
+		// Delete first quote if exists
+		if ($value[0] == "'"){
+			$value = substr($value, 1);
+		}
+		// Delete last quote if exists
+		if ($value[strlen($value) - 1] == "'"){
+			$value = substr($value, 0, strlen($value) - 1);
+		}
+		// Return value ready to use in a LIKE condition
+		return $value;
+	}
+	
 	
 	/**
 	 * Return a tuple as an array.
@@ -1080,6 +1060,7 @@ class DB {
 		return static::$db_connection->getRow("SELECT $selected_fields FROM $table " . self::makeWhereCondition($condition) . " " . self::makeOrderBy($order) . " LIMIT 1");
 	}
 
+	
 	/**
 	 * Return one value of a tuple.
 	 * @param string $table Table to get its random tuples.
@@ -1093,6 +1074,7 @@ class DB {
 		return static::$db_connection->getOne("SELECT $selectedField FROM $table " . self::makeWhereCondition($condition));
 	}
 
+	
 	/**
 	 * Get array of arrays to loop to the results of a getAll operation.
 	 * @param string $table Table to get its random tuples.
@@ -1137,6 +1119,7 @@ class DB {
 		return "SELECT {$fields_to_select} FROM {$table} ".static::makeWhereCondition($condition)." ".static::makeOrderBy($order);
 	}
 	
+	
 	/**
 	 * Return random tuples of a table.
 	 * @param string $table Table to get its random tuples.
@@ -1160,12 +1143,11 @@ class DB {
 
 
 	/**
-	 * Elimina la tabla $table.
-	 * @param string $table Nombre de la tabla a eliminar.
+	 * Delete the table $table.
+	 * @param string $table Table to be deleted.
 	 */
 	public static function dropTable($table) {
-
-		return static::$db_connection->Execute("DROP TABLE $table");
+		return static::executeSqlTemplate("drop/query.twig.sql", $table);
 	}
 
 
@@ -1246,6 +1228,7 @@ class DB {
 		return static::$db_connection->CreateTableSQL($tableName, $tableFields);
 	}
 
+	
 	/**
 	 * Return the field length of a tuple.
 	 * @param string $table Table name.
@@ -1264,6 +1247,7 @@ class DB {
 		return (int) ($res[$lengthField]);
 	}
 
+	
 	/**
 	 * Check if value in a field is NULL.
 	 * @param string $table Table name.
@@ -1326,6 +1310,7 @@ class DB {
 		return $rs->getArray();
 	}
 
+	
 	/**
 	 * Natural join between several tables.
 	 * Implements INNER JOIN between several tables.
@@ -1470,10 +1455,11 @@ class DB {
 		}
 		
 		// Limit of the query
-		if(isset($params["limit"]) && $params["limit"] != null)
+		if(isset($params["limit"]) && $params["limit"] != null){
 			$limit = $params["limit"];
-		else
+		}else{
 			$limit = null;
+		}
 		
 		$limit = static::makeLimit($limit);
 		
@@ -1576,6 +1562,7 @@ class DB {
 		static::$db_connection->execute("UNLOCK TABLES");
 	}
 
+	
 	// Transaction functions
 	// USE:
 	// DBHelper::desactivateAutocommit(); //si usamos START TRANSACTION no hace falta
@@ -1588,15 +1575,18 @@ class DB {
 	//   DBHelper::activateAutocommit();//si usamos START TRANSACTION no hace falta
 	//
 	
+	
 	private static function activateAutocommit() {
 		static::$db_connection->execute("SET autocommit = 1");
 	}
 
+	
 	private static function desactivateAutocommit() {
 
 		static::$db_connection->execute("SET autocommit = 0");
 	}
 
+	
 	/*
 	 *  work -> STRING indica el punto sobre el que hacer el commit
 	 *  chain -> 0|1 -> indica si hace chain o no
@@ -1626,6 +1616,7 @@ class DB {
 		static::$db_connection->execute("commit $commit_sql");
 	}
 
+	
 	public static function rollback($work = null, $chain = null, $release = null) {
 
 		$sql = "ROLLBACK";
@@ -1648,6 +1639,7 @@ class DB {
 		static::$db_connection->execute($sql);
 	}
 
+	
 	/*
 	 * transaction_characteristic:
 	 *     WITH CONSISTENT SNAPSHOT
