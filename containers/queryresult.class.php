@@ -10,7 +10,8 @@ namespace lulo\containers;
 */
 
 /**
-* QueryResult is a multiporpuses container for querying efficiently a database.
+ * QueryResult is a multiporpuses container for querying efficiently a database.
+ * @deprecated Please use Queries better that Collections.
 */
 class QueryResult implements \ArrayAccess, \Iterator, \Countable {
 	

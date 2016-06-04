@@ -4,6 +4,7 @@ namespace lulo\containers;
 
 /**
  * Colección de objectos generados por el generador de clases.
+ * @deprecated Please use Queries better that Collections.
  * @author Diego J. Romero López <diego@intelligenia.com>
  * */
 class Collection implements \Countable, \Iterator, \ArrayAccess
