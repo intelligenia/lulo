@@ -90,8 +90,7 @@ trait Load {
 			return new QueryResult($rs, get_called_class());
 		
 		}elseif($container == "query"){
-			$raw_filter = $db::makeWhereCondition($finalCondition, "main_table");
-			print $raw_filter;
+			$raw_filter = $db::makeWhereCondition($finalCondition, static::TABLE_ALIAS);
 			return static::objects()->raw_filter($raw_filter);
 			
 		}elseif($container == "collection"){

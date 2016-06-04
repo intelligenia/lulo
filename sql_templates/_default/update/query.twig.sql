@@ -2,7 +2,7 @@
 
 
 {% block select %}
-  UPDATE {{query.table}} main_table
+  UPDATE {{query.table}} {{query.table_alias}}
 {% endblock select %}
 
 

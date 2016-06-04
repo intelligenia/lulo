@@ -15,13 +15,13 @@ class OrderField{
 	public $table;
 	
 	/** Alias of the table used in the statement  */
-	public $tableAlias;
+	public $table_alias;
 	
 	/** Field that will define order of query */
 	public $field;
 	
 	/** Type of ordering ("asc" [ascending] or "desc" [descending]) */
-	public $orderValue;
+	public $order_value;
 
 	/**
 	 * Creates a new field ordering.
@@ -29,13 +29,13 @@ class OrderField{
 	 * @param object $luloquery query which will have this ordering applied.
 	 * @param string $model Main model that will be the query destination.
 	 * */
-	public function __construct($luloquery, $model, $field, $orderValue){
+	public function __construct($luloquery, $model, $field, $order_value){
 		
 		$this->luloquery = $luloquery;
 		
 		// Ordering must be ASC or DESC
-		if(!(strtolower($orderValue)=="asc" or strtolower($orderValue)=="desc")){
-			throw new \Exception("Incorrect ordering value for field {$field}. It has {$orderValue} and must be 'asc' o 'desc'");
+		if(!(strtolower($order_value)=="asc" or strtolower($order_value)=="desc")){
+			throw new \Exception("Incorrect ordering value for field {$field}. It has {$order_value} and must be 'asc' o 'desc'");
 		}
 		
 		// Field can have a reference to other extern table. That implies
@@ -49,9 +49,9 @@ class OrderField{
 				$this->luloquery->addRelatedModel($relationshipName, $relatedModel=null);
 				$this->model = $model;
 				$this->table = $model::getTableName();
-				$this->tableAlias = $relationshipName;
+				$this->table_alias = $relationshipName;
 				$this->field = $matches[2];
-				$this->orderValue = strtoupper($orderValue);
+				$this->order_value = strtoupper($order_value);
 			}else{
 				throw new \Exception("Model {$model} does not have relationship {$relationshipName}");
 			}
@@ -61,9 +61,9 @@ class OrderField{
 		elseif($model::metaHasAttribute($field)){
 			$this->model = $model;
 			$this->table = $model::getTableName();
-			$this->tableAlias = "main_table";
+			$this->table_alias = $this->luloquery->table_alias;
 			$this->field = $field;
-			$this->orderValue = strtoupper($orderValue);
+			$this->order_value = strtoupper($order_value);
 		}
 		else{
 			throw new \Exception("Model {$model} does not have field {$field}");

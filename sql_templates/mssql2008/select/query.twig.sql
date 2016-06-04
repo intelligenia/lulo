@@ -15,7 +15,7 @@ SELECT * FROM (
 
                     {# Standard fields #}
                     {% if query.selected_fields and query.selected_fields|length > 0 %}
-                            {{q.selected_fields(query, "main_table")}}{% if query.aggregations|length > 0 %},{% endif %}
+                            {{q.selected_fields(query, query.table_alias)}}{% if query.aggregations|length > 0 %},{% endif %}
                     {% elseif query.aggregations|length > 0 %}
                             {# If there were no fields in the query is an aggregation query #}
                     {% endif %}		
@@ -25,7 +25,7 @@ SELECT * FROM (
                             {% for aggregation in query.aggregations %}
                                     {{aggregation.functionName}}(
                                             {% if aggregation.fields and aggregation.fields|length > 0 %}
-                                                    {% for field in aggregation.fields %}main_table.{{field}}{% if not loop.last %}, {% endif %}{% endfor %}
+                                                    {% for field in aggregation.fields %}{{query.table_alias}}.{{field}}{% if not loop.last %}, {% endif %}{% endfor %}
                                             {% else %}
                                                     *
                                             {% endif %}
@@ -37,7 +37,7 @@ SELECT * FROM (
     {% endblock select %}
 
     {% block from %}
-    FROM {{query.table}} AS main_table
+    FROM {{query.table}} AS {{query.table_alias}}
     {% endblock %}
 
     {% block join %}
@@ -90,7 +90,7 @@ SELECT * FROM (
       {% if query.has_group_by %}
         GROUP BY 
         {% for aggregation in query.aggregations %}
-          {% for field in aggregation.fields %}main_table.{{field}}{% if not loop.last %}, {% endif %}{% endfor %}
+          {% for field in aggregation.fields %}{{query.table_alias}}.{{field}}{% if not loop.last %}, {% endif %}{% endfor %}
         {% endfor %}
       {% endif %}
     {% endblock group_by %}
@@ -98,7 +98,7 @@ SELECT * FROM (
     {# Order of the results #}
     {% block order %}
             {% if query.order %}
-                    ORDER BY {% for fieldOrder in query.order %}{{fieldOrder.tableAlias}}.{{fieldOrder.field}} {{fieldOrder.orderValue}}{% if not loop.last %}, {% endif %}{% endfor %}
+                    ORDER BY {% for fieldOrder in query.order %}{{fieldOrder.table_alias}}.{{fieldOrder.field}} {{fieldOrder.order_value}}{% if not loop.last %}, {% endif %}{% endfor %}
             {% endif %}
     {% endblock order %}
 ) _superquery

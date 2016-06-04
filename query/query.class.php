@@ -29,6 +29,9 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
 	/** Main table of the model */
 	public $model_table;
+	
+	/** Table alias */
+	public $table_alias;
 
 	/** Fields to select. By default, all that belongs to model $model */
 	public $selected_fields = null;
@@ -174,6 +177,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		$this->model = $model;
 		// Model table
 		$this->model_table = $model::getTableName();
+		$this->table_alias = $model::TABLE_ALIAS;
 		
 		$this->filters = [];
 		$this->relationships = [];
@@ -496,7 +500,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 				// Check model has $column attribute
 				elseif($model::metaHasAttribute($column)){
 					$escapedColumn = substr($db::qstr($column), 1, -1);
-					$value = "main_table.{$escapedColumn}";
+					$value = "{$this->table_alias}.{$escapedColumn}";
 				}
 				// Otherwise, throw exception
 				else{

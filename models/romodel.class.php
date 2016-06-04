@@ -2,6 +2,9 @@
 
 namespace lulo\models;
 
+use lulo\containers\Collection as Collection;
+use lulo\containers\QueryResult as QueryResult;
+
 /**
  * Abstract class that allows read-only access to a table.
  * 
@@ -18,6 +21,9 @@ abstract class ROModel{
 	
 	/** Model table that will be read */
 	const TABLE_NAME = "<TABLE_NAME>";
+	
+	/** Model table alias in the queries */
+	const TABLE_ALIAS = "_main_table";
 	
     /** Name of autoincrementable id attribute */
     const ID_ATTRIBUTE_NAME = "id";

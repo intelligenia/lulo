@@ -4,6 +4,9 @@ namespace lulo\models;
 
 require_once __DIR__."/romodel.class.php";
 
+use lulo\containers\Collection as Collection;
+use lulo\containers\QueryResult as QueryResult;
+
 /**
  * Parent class that allows writting data in database.
  * @author Diego J. Romero López at intelligenia.

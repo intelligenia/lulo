@@ -178,7 +178,17 @@ trait LoadRelated {
 		if($container=="queryresult"){
 			return new QueryResult($db::joinAsRecordSet($fieldsByTable, $relations, $localConditions, $params), $foreignClass);
 		}
-		
+		if($container=="query"){
+			$raw_filter = $db::makeWhereCondition($remoteCondition, static::TABLE_ALIAS);
+			$query = $this->$relationName()->raw_filter($raw_filter);
+			if(!is_null($order)){
+				$query = $query->order($order);
+			}
+			if(!is_null($limit)){
+				$query = $query->limit($limit);	
+			}
+			return $query;
+		}		
 		
 		// Otherwise, all the objects are returned
 		$rows = $db::join($fieldsByTable, $relations, $localConditions, $params);

@@ -46,7 +46,6 @@ class Tester{
 			$users = User::objects()->limit($limit)->order(["first_name" => "asc"]);
 			foreach ($users as $user) {
 				$user->i = 1;
-				//var_dump($user);
 			}
 			$users->recordSet->close();
 			$end = microtime(true);
@@ -428,6 +427,7 @@ class Tester{
 	 */
 	public static function dbLoad_tests(){
 		
+		$user = static::create_default_user($userData=null);
 		print "Tests sobre DBLOAD<br/>";
 		$numTags = 10;
 		$prefix = "Tag ".static::create_unique_suffix();
@@ -446,8 +446,8 @@ class Tester{
 		
 		// Obtención de las etiquetas mediante la operación dbLoad
 		$loadedTags = Tag::dbLoadAll(["description" => ["like"=>"$prefix%"]], $order=null, $limit=null, $container="query");
-		print $loadedTags->sql();
 		foreach($loadedTags as $loadedTag){
+			$user->dbAddRelation("tags", $loadedTag);
 			print " -".$loadedTag->str()."<br/>";
 		}
 		
@@ -457,9 +457,17 @@ class Tester{
 		
 		print "Cinco primeras etiquetas<br/>";
 		// Obtención de las etiquetas mediante la operación dbLoad
-		$loadedTags = Tag::dbLoadAll(["description" => ["like"=>"$prefix%"]], $order=null, $limit=[0, 5]);
-		foreach($loadedTags as $loadedTag){
+		$loadedTags2 = Tag::dbLoadAll(["description" => ["like"=>"$prefix%"]], $order=null, $limit=[0, 5]);
+		foreach($loadedTags2 as $loadedTag){
 			print " -".$loadedTag->str()."<br/>";
+		}
+		
+		// Etiquetas del usuario $user
+		$tags = $user->dbLoadRelated("tags", $remoteCondition=[], $order=["name"=>"asc"], $limit=null, $container="query");
+		if($tags->count() == $loadedTags->count()){
+			print "- Éxito las etiquetas relacionadas son iguales a las que había inicialmente<br>";
+		}else{
+			print "- Error las etiquetas relacionadas NO son iguales a las que había inicialmente {$tags->count()} != {$loadedTags->count()}<br>";
 		}
 		
 		// Comprobación de que las etiquetas se han creado con éxito
@@ -469,7 +477,6 @@ class Tester{
 		}else{
 			print "- Hay {$tags->count()} etiquetas creadas con el prefijo {$prefix}. ERROR.<br>";
 		}
-		$tags->delete();
 		
 		print "FIN de tests sobre DBLOAD<br/><br/>";
 	}

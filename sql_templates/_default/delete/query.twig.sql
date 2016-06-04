@@ -2,7 +2,7 @@
 
 
 {% block select %}
-  DELETE main_table.*
+  DELETE {{query.table_alias}}.*
   
   {# Every child table that has the main table as a foreign key must be included with an alias. These tables will be deleted if have delete on cascade. #}
   {% for relationship in query.relationships if relationship["attributes"]["type"]=="OneToMany" %}
@@ -24,7 +24,7 @@
 
 
 {% block from %}
-  FROM {{query.table}} main_table
+  FROM {{query.table}} {{query.table_alias}}
 {% endblock %}
 
 
@@ -34,7 +34,7 @@
   {% for relationship in query.relationships if relationship["attributes"]["type"]=="OneToMany" %}
     LEFT OUTER JOIN {{relationship["table"]}} AS {{relationship["name"]}} ON (
     {% for src_attr,dest_attr in relationship["attributes"]["condition"] %}
-      {{relationship["name"]}}.{{dest_attr}} = main_table.{{src_attr}}
+      {{relationship["name"]}}.{{dest_attr}} = {{query.table_alias}}.{{src_attr}}
       {% if not loop.last %}AND{% endif %}
     {% endfor %}
   )

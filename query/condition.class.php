@@ -69,7 +69,7 @@ class Condition{
 		}else{
 			$this->model = $model;
 			$this->table = $model::getTableName();
-			$this->table_alias = "main_table";
+			$this->table_alias = $model::TABLE_ALIAS;
 			$this->field = $field;
 			$this->operator = "=";
 		}
