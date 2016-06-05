@@ -30,8 +30,9 @@ This local configuration file will be loaded automatically from **configuration.
 
 ## API
 
-- [API](docs/API.md)
-- [Queries](docs/Queries.md)
+- [Models](docs/models.md)
+- [API](docs/model_api.md)
+- [Queries](docs/queries.md)
 
 Extended documents:
 - [Lulo](docs/Lulo-ES.pdf)

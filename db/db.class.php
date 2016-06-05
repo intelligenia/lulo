@@ -723,35 +723,34 @@ class DB {
 	 *
 	 * OPERATORS
 	 *
-	 * Si $valor es un array asociativo, la condición se interpreta como $operador => $argumento. El
-	 * operador puede ser cualquiera de los permitidos por SQL, usándose la notación infijo:
+	 * If $value is an associative array condition will be interpreted as $operator => $argument.
+	 * Operator is any of the legal SQL operators:
 	 *
-	 *    'campo' => array ("<>" => "hola mundo")
+	 *    'field' => array ("<>" => "hola mundo")
 	 *
-	 * se transforma en SQL en el código:
+	 * will be the following SQL code:
 	 *
-	 *    ... campo<>'hola mundo' ...
+	 *    ... field<>'hola mundo' ...
 	 *
-	 * Algunos operadores se interpretan de forma especial y se explican más adelante.
+	 * Some operators are special and will be explained later.
 	 *
-	 * $argumento puede ser cualquier valor simple de PHP o alguno de los siguientes con significado
-	 * especial:
+	 * $argument can be any PHP value or the following special values:
 	 *
 	 *   (object) DateTime
-	 *       Se convierte a fecha en formato MySQL y se hace una comparación tipo
-	 *       'campo $operador "fecha"'.
+	 *       If is a datatime will be converted to YYYY-MM-DD HH:mm:SS and will do
+	 *       comparison 'field $operator "YYYY-MM-DD HH:mm:SS"'.
 	 *
-	 *   (string) "self::otrocampo"
-	 *       Se hace una comparación tipo 'campo $operador otrocampo'.
+	 *   (string) "self::other_field"
+	 *       will be a comparison of type 'field $operator other_field'.
 	 *
 	 *   (boolean) TRUE / FALSE
-	 *       Se hace una comparación tipo 'campo $operador TRUE' o 'campo $operador FALSE'.
+	 *       will be a comparison of type 'field $operator TRUE' or 'field $operator FALSE'.
 	 *
 	 *   NULL
-	 *       Se hace una comparación tipo 'campo $operador NULL'.
+	 *       will be a comparison 'field $operator NULL'.
 	 *
 	 *
-	 * ==OPERADORES ESPECIALES==
+	 * SPECIAL OPERATORS
 	 * NOTE: operators are must be written in capital letters.
 	 *
 	 *   %LIKE%

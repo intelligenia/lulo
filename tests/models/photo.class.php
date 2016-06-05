@@ -42,7 +42,6 @@ class Photo extends \lulo\models\LuloModel{
 		// Foreign key
 		"user_id" => [
 			"type"=>"int", "subtype"=>"ForeignKey", "name"=>"user", "on"=>"lulo\\tests\models\User.id", "related_name"=>"photos",
-			// A partir de aquí abajo todo son parámetros opcionales
 			"verbose_name"=>"Photo owner",
 			"related_verbose_name" => "User photos",
 			"nullable" => false,  "readonly"=>false,
