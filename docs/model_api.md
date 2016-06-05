@@ -16,13 +16,13 @@ way of loading data from the database.
 ## dbLoadAll
 
 **dbLoadAll** returns a query, queryresult or collection of objects that comply
-with the condition.
+with the condition. By default it returns a [query](docs/queries.md).
 
 ### Conditions
 
-Conditions is an array of pairs <attribute>=>[<operator> => <value>].
+Conditions is an array of pairs **attribute => [operator => value]**.
 
-More information about the format can be found [here](db/db.class.php).
+More information about the format can be found [here](db/db.class.php#L668).
 
 ### Order
 An array where keys are attributes and values are "ASC" or "DESC".
