@@ -59,12 +59,12 @@ foreach($loadedTags as $loadedTag){
 By default, filter operator is "equal to" but sometimes we need more advanced operators
 or [field lookups](https://docs.djangoproject.com/es/1.9/ref/models/querysets/#field-lookups) as Django team call them.
 
-The way to call a specific operator is <attribute>__<operator> => <value>.
+The way to call a specific operator is **attribute__operator => value**.
 
 For example:
 ```php
 $last_name = "Jones";
-$countJonesUsers = User::objects()->filter(["last_name__contains" => $last_name])->count();
+$countJones = User::objects()->filter(["last_name__contains" => $last_name])->count();
 ```
 
 ### Filter operator reference
@@ -84,14 +84,16 @@ $countJonesUsers = User::objects()->filter(["last_name__contains" => $last_name]
 
 ### Filtering by remote conditions
 
-To filter by a remote condition, use the following syntax: <relationship_name>::<remot_attribute> => <value>.
+To filter by a remote condition, use the following syntax: **relationship_name::remot_attribute => value**.
 
 Note that relationships have also an inverse relationship so the relationship_name is the name of the relationship
 according to what model is executing the query.
 
 For example:
 ```php
-$countChildrenOfTagsThatEndsWithEngineering = Tag::objects()->filter(["parent::name__endswith" => "Engineering"])->count();
+// Count children of parent Engineering tags
+$countEngTagsChildren = Tag::objects()->filter(["parent::name__endswith" => "Engineering"])->count();
 
-$tagsOfUsersWhoseSurnameIsJones = Tag::objects()->filter(["users::last_name" => "Jones"]);
+// Tags related to users which the "Jones" surname
+$jonesUserTags = Tag::objects()->filter(["users::last_name" => "Jones"]);
 ```

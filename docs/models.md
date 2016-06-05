@@ -59,7 +59,7 @@ don't hesitate to contact us. We really appreciate any help in this project.
   - **verbose_name**: readable model name.
   - **verbose_name_plural**: readable model name in plural.
   - **gender**: gender of the model ("f" for female and "m" for male).
-  - **order**: order in management interfaces. It is an array with the form ["<attribute>"=>"ASC|DESC"]
+  - **order**: order in management interfaces. It is an array with the form ["attribute"=>"ASC|DESC"]
 - **PK_ATTRIBUTES**: static array with a list of the attributes that form the primary key.
 
 
@@ -136,7 +136,7 @@ is the properties of that relationship.
     - **conditions**: array of arrays that contains the link between this model's table and the first nexus, the link between the first and the second nexus and so on.
   - For **ForeignKey** and **OneToOne** relationships:
     - **nullable**: if the relationship is nullable.
-    - **on_master_deletion**: could take "delete" and ["set" => ["<attribute1>"=>null, "<attribute2>"=>null, ..., "<attributeN>"=>null]]. The former deletes the servant when the master is deleted, the latter sets some attributes of the servant as null.
+    - **on_master_deletion**: could take "delete" and ["set" => ["attribute1"=>null, "attribute2"=>null, ..., "attributeN"=>null]]. The former deletes the servant when the master is deleted, the latter sets some attributes of the servant as null.
 
 ### Definition of foreign keys in model attributes
 
@@ -144,7 +144,7 @@ It is possible to define foreign key relationships based on attributes:
 
 We only have to use the subtype "ForeignKey and include the following extra metaattributes:
 - **name**: name of the relationship.
-- **on**: model and model attribute that will link with the current attribute of the form <Model>.<attribute>.
+- **on**: model and model attribute that will link with the current attribute of the form **Model.attribute**.
 
 The rest of the attributes are the same and can have the same values as have
 a standard relationship.
