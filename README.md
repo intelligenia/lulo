@@ -2,10 +2,10 @@
 A minimal ORM for PHP inspired by Django.
 
 # What's this?
-This is a small and easy to use ORM based in Django's ORM API for PHP.
+This is a small and easy to use ORM based on Django's ORM API for PHP.
 
 # Requirements
-PHP 5.4 and dependences installed by [composer](https://getcomposer.org/) ([AdoDB](http://adodb.org/dokuwiki/doku.php) and [Twig template system](http://twig.sensiolabs.org/)).
+PHP 5.4 and dependencies installed by [composer](https://getcomposer.org/) ([AdoDB](http://adodb.org/dokuwiki/doku.php) and [Twig template system](http://twig.sensiolabs.org/)).
 
 # Documentation
 
@@ -120,10 +120,10 @@ User::init();
 # Extending Lulo
 
 ## Adding new DBMS SQL templates
-Add a new folder in sql_templates with the name you will identify your DBMS (mssql2012, for example).
+Add a new folder in sql_templates with the name that will identify your DBMS (mssql2012, for example).
 
-Overwrite the queries you need. Lulo template system will load first the templates you
-specify here and if it doesn't find the template, will try to load it from the _default
+Overwrite the queries you need. Lulo template system will first load the templates you
+specify here and if it doesn't find the template, it will try to load it from the _default
 folder.
 
 
@@ -145,3 +145,4 @@ Diego J. Romero López at intelligenia (diegoREMOVETHIS@REMOVETHISintelligenia.c
 - DB abstraction layer created by several members of intelligenia team. Reviewed and extended by Gerardo Fernandez Rodríguez.
 - QueryResult was done with Gerardo Fernandez Rodríguez.
 - Several bugfixes and tests in MSSQL done by [Francisco Morales](https://github.com/moralesgea).
+- Minor translation fixes done by [Brian Holsters](https://github.com/brian-holsters)
