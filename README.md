@@ -141,7 +141,7 @@ folder.
 
 # Authors
 - Lulo and Lulo query created by the team leader and main developer of this project:
-Diego J. Romero López at intelligenia (diego@intelligenia.com)
+Diego J. Romero López at intelligenia (diegoREMOVETHIS@REMOVETHISintelligenia.com)
 - DB abstraction layer created by several members of intelligenia team. Reviewed and extended by Gerardo Fernandez Rodríguez.
 - QueryResult was done with Gerardo Fernandez Rodríguez.
 - Several bugfixes and tests in MSSQL done by [Francisco Morales](https://github.com/moralesgea).
