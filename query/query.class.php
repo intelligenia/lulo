@@ -27,6 +27,9 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 	/** LuloModel model that will be queried */
 	public $model;
 
+	/** Model id attribute name, By default is "id" */
+	public $model_id_attribute_name;
+
 	/** Main table of the model */
 	public $model_table;
 	
@@ -175,6 +178,7 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 		$this->db = $model::DB;
 		// Model to query
 		$this->model = $model;
+		$this->model_id_attribute_name = $model::ID_ATTRIBUTE_NAME;
 		// Model table
 		$this->model_table = $model::getTableName();
 		$this->table_alias = $model::TABLE_ALIAS;

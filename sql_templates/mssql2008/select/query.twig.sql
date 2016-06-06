@@ -32,7 +32,7 @@ SELECT * FROM (
                                     ) AS {{aggregation.alias}}
                             {% endfor %}
                     {% endif %}
-                , ROW_NUMBER() OVER (ORDER BY name) as _row FROM sys.databases
+                , ROW_NUMBER() OVER (ORDER BY {{query.model_id_attribute_name}}) as _row
             {% endblock selected_fields %}
     {% endblock select %}
 
