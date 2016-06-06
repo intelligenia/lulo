@@ -102,7 +102,9 @@ SELECT * FROM (
             {% endif %}
     {% endblock order %}
 ) _superquery
-WHERE _superquery._row > {{query.limit[0]}} and _superquery._row <= {{query.limit[1]}}
+{% if query.limit[0]  and query.limit[1] %}
+  WHERE _superquery._row > {{query.limit[0]}} and _superquery._row <= {{query.limit[1]}}
+{% endif %}
 
 {# For SELECT FOR UPDATE queries #}
 {% block for_update %}
