@@ -102,7 +102,7 @@ SELECT * FROM (
             {% endif %}
     {% endblock order %}
 ) _superquery
-{% if query.limit[0]  and query.limit[1] %}
+{% if query.limit[0] is defined and query.limit[1] is defined %}
   WHERE _superquery._row > {{query.limit[0]}} and _superquery._row <= {{query.limit[1]}}
 {% endif %}
 
