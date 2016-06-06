@@ -32,7 +32,7 @@ SELECT * FROM (
                                     ) AS {{aggregation.alias}}
                             {% endfor %}
                     {% endif %}
-                , ROW_NUMBER() OVER (ORDER BY name) as _row FROM sys.databases
+                , ROW_NUMBER() OVER (ORDER BY {{query.model_id_attribute_name}}) as _row
             {% endblock selected_fields %}
     {% endblock select %}
 
@@ -102,7 +102,9 @@ SELECT * FROM (
             {% endif %}
     {% endblock order %}
 ) _superquery
-WHERE _superquery._row > {{query.limit[0]}} and _superquery._row <= {{query.limit[1]}}
+{% if query.limit[0] is defined and query.limit[1] is defined %}
+  WHERE _superquery._row > {{query.limit[0]}} and _superquery._row <= {{query.limit[1]}}
+{% endif %}
 
 {# For SELECT FOR UPDATE queries #}
 {% block for_update %}
