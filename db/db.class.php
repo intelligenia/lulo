@@ -192,7 +192,16 @@ class DB {
 		$results = static::executeSqlTemplate("get_last_inserted_id/query.twig.sql");
 		return $results->fields["id"];
 	}
+
+	/**
+	* Return the last connection error of ADOdb object.
+	* @return string Message with the last connection error.
+	*/
+	public static function getLastConnectionError(){
+		return static::$db_connection->ErrorMsg();
+	}
 	
+
 	/**
 	 * 	Insert a longblob
 	 *  Used to avoid fully storing the blob in memroy
