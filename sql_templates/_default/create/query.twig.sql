@@ -13,11 +13,11 @@
             {% if attribute_properties["max_length"] %}
                 VARCHAR({{attribute_properties["max_length"]}})
             {% else %}
-                LONGTEXT
+                {% include "create/longtext_type.twig.sql" %}
             {% endif %}
         {% endif %}
     {% elseif attribute_properties["type"] == "blob" %}
-    LONGBLOB
+      {% include "create/longblob_type.twig.sql" %}
     {% endif %}
 {% endmacro %}
 
@@ -34,7 +34,7 @@
 {# Sets autoincrementability for attribute #}
 {% macro attr_autoincrementable(attribute_name, id_attribute_name) %}
     {% if attribute_name == id_attribute_name %}
-        AUTO_INCREMENT
+        {% include "create/autoincrement_statement.twig.sql" %}
     {% else %}
     {% endif %}
 {% endmacro %}
