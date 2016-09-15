@@ -12,7 +12,7 @@
 			{% if condition_i > 0 %}
                             {% set src_table = escape.table(relationship["attributes"]["junctions"][condition_i]) %}
 			{% endif %}
-			{{query.table_alias}}.{{escape.field(src_attr)}} = {{junction}}.{{escape.field(dest_attr))}}
+			{{query.table_alias}}.{{escape.field(src_attr)}} = {{junction}}.{{escape.field(dest_attr)}}
 			{% if not loop.last %} AND {% endif %}
 		{% endfor %}
 	)

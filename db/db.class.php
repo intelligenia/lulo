@@ -18,10 +18,10 @@ class DB {
         protected static $database_name = null;
 
 	/** Database engine */
-	const ENGINE = "mssql2008";
+	const ENGINE = "mysql";
 
 	/** Driver used to make the connection */
-	const DRIVER = "mssql2008_linux";
+	const DRIVER = "mysqli";
 	
 	/** Blob max length */
 	const BLOB_MAX_PACKET_LENGTH = 52428800;
