@@ -18,7 +18,7 @@ class DB {
 	const ENGINE = "mysql";
 
 	/** Driver used to make the connection */
-	const DRIVER = "mysqli";
+	const DRIVER = "mssql2008_linux";
 	
 	/** Blob max length */
 	const BLOB_MAX_PACKET_LENGTH = 52428800;
@@ -68,6 +68,17 @@ class DB {
 					static::$db_connection->PConnect($server, $user, $password, $database);
 					static::$db_connection->Execute("USE " . $database);
 					break;
+                                
+                                case "mssql2008_linux":
+                                case "mssql2012_linux":
+                                case "mssql_linux":
+				case "mssqllinux":
+                                    require_once(LULO_DIR__DEPENDENCES__VENDOR."/adodb/adodb-php/drivers/adodb-pdo.inc.php");
+                                    static::$db_connection = & ADONewConnection('pdo_mssql');
+                                    $dsnString= "host={$server};dbname={$database};charset=utf8";
+                                    static::$db_connection->connect('dblib:' . $dsnString, $user, $password);
+                                    print static::$db_connection->ErrorMsg();
+                                    break;
 
 				default:
 					trigger_error("Not valid database connection ".static::DRIVER, E_USER_ERROR);
