@@ -1,5 +1,9 @@
 {% import "select/selected_fields.twig.sql" as q %}
 
+{% import "escaping/escape.twig.sql" as escape %}
+
+{% set database_name = query.database_name %}
+
 {# Start transaction #}
 {% block start_transaction %}
 	{% if query.is_transaction %}
@@ -25,7 +29,7 @@ SELECT * FROM (
                             {% for aggregation in query.aggregations %}
                                     {{aggregation.functionName}}(
                                             {% if aggregation.fields and aggregation.fields|length > 0 %}
-                                                    {% for field in aggregation.fields %}{{query.table_alias}}.{{field}}{% if not loop.last %}, {% endif %}{% endfor %}
+                                                    {% for field in aggregation.fields %}{{query.table_alias}}.{{escape.field(field)}}{% if not loop.last %}, {% endif %}{% endfor %}
                                             {% else %}
                                                     *
                                             {% endif %}
@@ -37,7 +41,7 @@ SELECT * FROM (
     {% endblock select %}
 
     {% block from %}
-    FROM {{query.table}} AS {{query.table_alias}}
+    FROM {{escape.table(query.table)}} AS {{query.table_alias}}
     {% endblock %}
 
     {% block join %}
