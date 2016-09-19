@@ -14,14 +14,14 @@ class DB {
 	/** AdoDB database connection */
 	protected static $db_connection = null;
         
-        /** Database name */
-        protected static $database_name = null;
+    /** Database name */
+    protected static $database_name = null;
 
 	/** Database engine */
-	const ENGINE = "mysql";
+	const ENGINE = "mssql2008";
 
 	/** Driver used to make the connection */
-	const DRIVER = "mysqli";
+	const DRIVER = "mssqlnative";
 	
 	/** Blob max length */
 	const BLOB_MAX_PACKET_LENGTH = 52428800;
@@ -921,29 +921,30 @@ class DB {
 						}
 
 						// Specials operator (in $op)
-						if (mb_strtoupper($op) == "%LIKE%") {
+						$upper_operation = strtoupper($op);
+						if ($upper_operation == "%LIKE%") {
 							$sql_value = addcslashes($sql_value, "%_");
 							$sql_value = static::cleanValueForLike($sql_value);
 							$whereConditions[] = "{$sqlTable}{$f} LIKE '%{$sql_value}%'";
 						}
-						elseif (mb_strtoupper($op) == "%NOTLIKE%") {
+						elseif ($upper_operation == "%NOTLIKE%") {
 							$sql_value = addcslashes($sql_value, "%_");
 							$sql_value = static::cleanValueForLike($sql_value);
 							$whereConditions[] = "{$sqlTable}{$f} NOT LIKE '%{$sql_value}%'";
 						}
-						elseif (mb_strtoupper($op) == "LIKE") {
+						elseif ($upper_operation == "LIKE") {
 							$sql_value = static::cleanValueForLike($sql_value);
 							$whereConditions[] = "{$sqlTable}{$f} LIKE '{$sql_value}'";
 						}
-						elseif (mb_strtoupper($op) == "NOTLIKE") {
+						elseif ($upper_operation == "NOTLIKE") {
 							$sql_value = static::cleanValueForLike($sql_value);
 							$whereConditions[] = "{$sqlTable}{$f} NOT LIKE '{$sql_value}'";
 						}
-						elseif (mb_strtoupper($op) == "IS NOT" and is_null($value)) {
+						elseif ($upper_operation == "IS NOT" and is_null($value)) {
 							$whereConditions[] = "{$sqlTable}{$f} IS NOT NULL";
-						} elseif (mb_strtoupper($op) == "ISNOTNULL") {
+						} elseif ($upper_operation == "ISNOTNULL") {
 							$whereConditions[] = "{$sqlTable}{$f} IS NOT NULL";
-						} elseif (mb_strtoupper($op) == "OR") {
+						} elseif ($upper_operation == "OR") {
 							if (!is_array($value)){
 								throw new \InvalidArgumentException("An array was expected for OR operator");
 							}
@@ -954,7 +955,7 @@ class DB {
 									if (is_numeric($o)){
 										$o = "=";
 									}
-									if (mb_strtoupper($o) == "ISNOTNULL" || (!is_array($val) && mb_strtoupper($val) == "ISNOTNULL")){
+									if (strtoupper($o) == "ISNOTNULL" || (!is_array($val) && strtoupper($val) == "ISNOTNULL")){
 										$conditionParts[] = "{$sqlTable}{$f} IS NOT NULL";
 									}elseif (is_null($o) || is_null($val)){
 										$conditionParts[] = "{$sqlTable}{$f} IS NULL";
@@ -971,7 +972,7 @@ class DB {
 
 								$whereConditions[] = "(" . implode(" OR ", $conditionParts) . ")";
 							}
-						}elseif (mb_strtoupper($op) == "NOT_IN") {
+						}elseif ($upper_operation == "NOT_IN") {
 							if (!is_array($value)){
 								throw new \InvalidArgumentException("An array was expected for NOT_IN operator");
 							}
@@ -984,7 +985,7 @@ class DB {
 
 								$whereConditions[] = "(" . implode(" AND ", $conditionParts) . ")";
 							}
-						} elseif (mb_strtoupper($op) == "IN") {
+						} elseif ($upper_operation == "IN") {
 							if (!is_array($value)){
 								throw new \InvalidArgumentException("An array was expected for IN operator");
 							}
@@ -996,7 +997,7 @@ class DB {
 									// If value is NULL, condition is special
 									if ($val == null){
 										$extraConditionPart = "{$sqlTable}{$f} IS NULL OR";
-									}else if (mb_strtoupper($val) == "ISNOTNULL"){
+									}else if (strtoupper($val) == "ISNOTNULL"){
 										$extraConditionPart .= " {$sqlTable}{$f} IS NOT NULL OR";
 									}else{
 										$conditionParts[] = static::$db_connection->qstr($val);
@@ -1038,7 +1039,7 @@ class DB {
 						$v = "=FALSE";
 					} elseif ($v === TRUE) {
 						$v = "=TRUE";
-					} elseif (mb_strtoupper($v) == "ISNOTNULL") {
+					} elseif (strtoupper($v) == "ISNOTNULL") {
 						$v = " IS NOT NULL";
 					} else {
 						$v = self::strEq($v);

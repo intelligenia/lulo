@@ -36,12 +36,19 @@ SELECT * FROM (
                                     ) AS {{aggregation.alias}}
                             {% endfor %}
                     {% endif %}
-                , ROW_NUMBER() OVER (ORDER BY {{query.model_id_attribute_name}}) as _row
+                , ROW_NUMBER() OVER (
+					ORDER BY
+					{% if query.order %}
+						{% for fieldOrder in query.order %}{{fieldOrder.table_alias}}.{{fieldOrder.field}} {{fieldOrder.order_value}}{% if not loop.last %}, {% endif %}{% endfor %}
+					{% else %}
+						{{query.table_alias}}.{{query.model_id_attribute_name}} ASC
+					{% endif %}
+					) as _row
             {% endblock selected_fields %}
     {% endblock select %}
 
     {% block from %}
-    FROM {{escape.table(query.table)}} AS {{query.table_alias}}
+    FROM {{escape.table(query.database_name, query.table)}} AS {{query.table_alias}}
     {% endblock %}
 
     {% block join %}
@@ -101,9 +108,7 @@ SELECT * FROM (
 
     {# Order of the results #}
     {% block order %}
-            {% if query.order %}
-                    ORDER BY {% for fieldOrder in query.order %}{{fieldOrder.table_alias}}.{{fieldOrder.field}} {{fieldOrder.order_value}}{% if not loop.last %}, {% endif %}{% endfor %}
-            {% endif %}
+            
     {% endblock order %}
 ) _superquery
 {% if query.limit[0] is defined and query.limit[1] is defined %}

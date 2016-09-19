@@ -2,6 +2,6 @@
     {{field_name}}
 {% endmacro %}
 
-{% macro table(table_name) %}
-    {{table_name}}
+{% macro table(database_name, table_name) %}
+    {{database_name}}.{{table_name}}
 {% endmacro %}

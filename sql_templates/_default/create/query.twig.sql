@@ -6,9 +6,9 @@
         INTEGER
     {% elseif attribute_properties["type"] == "string" %}
         {% if attribute_properties["subtype"] == "date" %}        
-            DATE
+            {% include "create/types/date.twig.sql" %}
         {% elseif attribute_properties["subtype"] == "datetime" %}        
-            DATETIME
+            {% include "create/types/datetime.twig.sql" %}
         {% else %}
             {% if attribute_properties["max_length"] %}
                 {% include "create/types/varchar.twig.sql" with {'length': attribute_properties["max_length"]}  %}
