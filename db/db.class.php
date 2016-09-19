@@ -288,80 +288,17 @@ class DB {
 	 * @param mixed $clobfields List of columns that are clobs.
 	 * @return boolean true if insertion went right, false otherwise.
 	 */
-	public static function insert($tname, &$data, $blobfields = array(), $clobfields = array()) {
-		if (is_string($blobfields)) {
-			$blobfields = preg_split('/ +/', $blobfields);
-		}
+	public static function insert($tname, &$data) {
+            
+            $select_sql = "SELECT * FROM {$tname} WHERE 0 = 1";
+            
+            // Get an empty recordset
+            $rs = static::$db_connection->Execute($select_sql);
 
-		if (is_string($clobfields)) {
-			$clobfields = preg_split('/ +/', $clobfields);
-		}
-
-		// Max size of blobs
-		$num_blobs = count($blobfields) + count($clobfields);
-		if ($num_blobs > 0) {
-			$max_packet = static::BLOB_MAX_PACKET_LENGTH / $num_blobs;
-		}
-
-		// Standard attributes and NULLs
-		foreach ($data as $field => $value) {
-			if (in_array($field, $blobfields) || in_array($field, $clobfields)) {
-				$new_data[$field] = "";
-				if (!in_array(static::DRIVER, array("oci8", "oci8po"))) {
-					// Assuming memory control is only needed in MySQL
-					if (strlen($value) < $max_packet) {
-						// If blob is small enough, insert it in the query
-						$new_data[$field] = $value;
-						unset($blobfields[array_search($field, $blobfields)]);
-						unset($clobfields[array_search($field, $clobfields)]);
-					}
-				}
-			} else {
-				$new_data[$field] = $value;
-			}
-		}
-		
-		/// INSERT of non-blob attributes
-		$data_keys = array_keys($new_data);
-		$data_keys_sql = "(" . implode(",", $data_keys) . ")";
-		// Escape of the values
-		$new_data_sql = self::convertDataArrayToSQLModificationString($new_data);
-		// SQL code for the insertion
-		$insertSQL = "INSERT INTO $tname $data_keys_sql VALUES $new_data_sql";
-		$ok = static::$db_connection->Execute($insertSQL);
-		
-		/// BLOBs & CLOBs
-		if ($ok) {
-			foreach ($new_data as $field => $value) {
-				if ($value != ""){
-					$where[] = $field . self::strEq($value);
-				}
-			}
-
-			$where_cond = implode(" AND ", $where);
-
-			foreach ($blobfields as $field) {
-				if ($ok !== false && isset($data[$field])){
-					if (in_array(static::DRIVER, array("oci8", "oci8po"))) {
-						$ok = static::$db_connection->UpdateBlob($tname, $field, $data[$field], $where_cond);
-					} else {
-						self::UpdateBlob($tname, $field, $data[$field], $where_cond);
-					}
-				}
-			}
-
-			foreach ($clobfields as $field){
-				if ($ok !== false && isset($data[$field])){
-					if (in_array(static::DRIVER, array("oci8", "oci8po"))) {
-						$ok = static::$db_connection->UpdateClob($tname, $field, $data[$field], $where_cond);
-					} else {
-						self::UpdateBlob($tname, $field, $data[$field], $where_cond);
-					}
-				}
-			}
-		}
-
-		return $ok !== false;
+            // Creation of INSERT SQL code
+            $insert_sql = static::$db_connection->GetInsertSQL($rs, $data); 
+            
+            return static::$db_connection->execute($insert_sql);
 	}
 
 
@@ -401,72 +338,22 @@ class DB {
 	 * @param string $tname Table name to make the insertion.
 	 * @param array $data array Associative array of the form <field name> => <value>
 	 * @param string $where WHERE clause for the update.
-	 * @param mixed $blobfields List of columns that are blobs.
-	 * @param mixed $clobfields List of columns that are clobs.
 	 * @return boolean true if query went right, false otherwise.
 	 */
-	public static function update($tname, &$data, $where = "", $blobfields = array(), $clobfields = array()) {
+	public static function update($tname, &$data, $where = "") {
 
-		if (is_string($blobfields))
-			$blobfields = preg_split('/ +/', $blobfields);
+            if(is_array($where)){
+                $where = self::makeWhereCondition($where, false);
+            }
 
-		if (is_string($clobfields))
-			$clobfields = preg_split('/ +/', $clobfields);
+            // Get element to update
+            $select_sql = "SELECT * FROM {$tname} WHERE {$where}"; 
+            $rs = static::$db_connection->Execute($select_sql);
 
-		// Max size of blobs
-		$num_blobs = count($blobfields) + count($clobfields);
-		if ($num_blobs > 0)
-			$max_packet = static::BLOB_MAX_PACKET_LENGTH / $num_blobs;
+            // Update data
+            $update_sql = static::$db_connection->GetUpdateSQL($rs, $data); 
 
-		// Convert empty strings to IS NULL
-		$where = preg_replace('/=\s*((\'\')|(""))/', " IS NULL ", $where);
-		$where = preg_replace('/((!=)|(<>))\s*((\'\')|(""))/', " IS NOT NULL ", $where);
-
-		// Non-blob attributes
-		foreach ($data as $field => $value) {
-			if (in_array($field, $blobfields) || in_array($field, $clobfields)) {
-				$new_data[$field] = "";
-				if (!in_array(static::DRIVER, array("oci8", "oci8po"))) {
-					// Only MySQL needs blob management
-					if (strlen($value) < $max_packet) {
-						// If blobs are small enough, updated them directly
-						$new_data[$field] = $value;
-						unset($blobfields[array_search($field, $blobfields)]);
-						unset($clobfields[array_search($field, $clobfields)]);
-					}
-				}
-			} else {
-				$new_data[$field] = $value;
-			}
-		}
-
-		/// Update non-blob fields
-		// Escape of values
-		$new_data_sql = self::convertDataArrayToSQLUpdateString($new_data);
-		// SQL generation
-		$updateSQL = "UPDATE $tname SET $new_data_sql WHERE $where";
-		// SQL execution
-		$ok = static::$db_connection->Execute($updateSQL);
-		// BLOBs & CLOBs update
-		if ($ok) {
-			foreach ($blobfields as $field) {
-				if ($ok !== false && isset($data[$field]))
-					if (in_array(static::DRIVER, array("oci8", "oci8po"))) {
-						$ok = static::$db_connection->UpdateBlob($tname, $field, $data[$field], $where);
-					} else {
-						self::UpdateBlob($tname, $field, $data[$field], $where);
-					}
-			}
-
-			foreach ($clobfields as $field)
-				if ($ok !== false && isset($data[$field]))
-					if (in_array(static::DRIVER, array("oci8", "oci8po"))) {
-						$ok = static::$db_connection->UpdateClob($tname, $field, $data[$field], $where);
-					} else {
-						self::UpdateBlob($tname, $field, $data[$field], $where_cond);
-					}
-		}
-		return $ok !== false;
+            return static::$db_connection->Execute($update_sql);
 	}
 
 	
