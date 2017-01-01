@@ -20,6 +20,9 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 
 	/** Database connector of the class \lulo\db\DB */
 	public $db;
+        
+        /** Database name that belongs to $db */
+	public $database_name;
 
 	/** Should we include DISTINCT statement? */
 	public $is_distinct;
@@ -176,6 +179,11 @@ class Query implements \ArrayAccess, \Iterator, \Countable {
 	public function __construct($model) {
 		// Using the same database connector than the model uses
 		$this->db = $model::DB;
+                
+                // Name of the database
+                $db = $this->db;
+                $this->database_name = $db::getDatabaseName();
+                
 		// Model to query
 		$this->model = $model;
 		$this->model_id_attribute_name = $model::ID_ATTRIBUTE_NAME;

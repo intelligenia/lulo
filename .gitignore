@@ -6,6 +6,8 @@ configuration.local.php
 dependences/vendor
 dependences/composer.phar
 
+tests/info.php
+
 nbproject
 
 .idea

@@ -11,13 +11,13 @@
             DATETIME
         {% else %}
             {% if attribute_properties["max_length"] %}
-                VARCHAR({{attribute_properties["max_length"]}})
+                {% include "create/types/varchar.twig.sql" with {'length': attribute_properties["max_length"]}  %}
             {% else %}
-                LONGTEXT
+                {% include "create/types/longtext.twig.sql" %}
             {% endif %}
         {% endif %}
     {% elseif attribute_properties["type"] == "blob" %}
-    LONGBLOB
+      {% include "create/types/longblob.twig.sql" %}
     {% endif %}
 {% endmacro %}
 
@@ -34,7 +34,7 @@
 {# Sets autoincrementability for attribute #}
 {% macro attr_autoincrementable(attribute_name, id_attribute_name) %}
     {% if attribute_name == id_attribute_name %}
-        AUTO_INCREMENT
+        {% include "create/autoincrement_statement.twig.sql" %}
     {% else %}
     {% endif %}
 {% endmacro %}

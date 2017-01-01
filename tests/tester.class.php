@@ -266,7 +266,7 @@ class Tester{
 		$tagCleanedData = Tag::cleanCreation($tagData);
 		$tag = Tag::factoryFromArray($tagCleanedData);
 		$tag->dbSave();
-		
+                
 		// It should exist
 		$savedTag = Tag::objects()->filter($tagData)->get();
 		if($savedTag->name == $name and $savedTag->description==$description){
