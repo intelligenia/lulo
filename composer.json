@@ -1,0 +1,26 @@
+{
+    "name": "intelligenia/lulo",
+    "type": "library",
+    "description": "A minimal ORM for PHP inspired by Django",
+    "keywords": ["orm","database", "layer"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Diego J. Romero López",
+            "email": "diego@intelligenia.com",
+            "homepage": "https://www.linkedin.com/in/diegojromerolopez",
+            "role": "Main Developer"
+        },
+        {
+            "name": "Gerardo Fernández",
+            "email": "gerardo@intelligenia.com",
+            "homepage": "http://www.intelligenia.com/equipo#equipo/gerardo",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "twig/twig": "1.24.0",
+        "adodb/adodb-php": "5.20.4"
+    }
+}
