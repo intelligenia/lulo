@@ -7,6 +7,14 @@ This is a small and easy to use ORM based on Django's ORM API for PHP.
 # Requirements
 PHP 5.4 and dependencies installed by [composer](https://getcomposer.org/) ([AdoDB](http://adodb.org/dokuwiki/doku.php) and [Twig template system](http://twig.sensiolabs.org/)).
 
+# Installation
+
+[lulo has been uploaded to packagist.org](https://packagist.org/packages/intelligenia/lulo) can be easilly installed with composer:
+
+```sh
+composer require intelligenia/lulo
+```
+
 # Documentation
 
 ## Local configuration
