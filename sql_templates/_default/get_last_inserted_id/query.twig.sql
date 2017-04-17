@@ -1,1 +1,0 @@
-SELECT `LAST_INSERT_ID()` AS id FROM (SELECT LAST_INSERT_ID()) last_insert_id_results

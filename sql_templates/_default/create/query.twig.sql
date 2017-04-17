@@ -11,13 +11,13 @@
             DATETIME
         {% else %}
             {% if attribute_properties["max_length"] %}
-                VARCHAR({{attribute_properties["max_length"]}})
+                {% include "create/types/varchar.twig.sql" with {'length': attribute_properties["max_length"]}  %}
             {% else %}
-                {% include "create/longtext_type.twig.sql" %}
+                {% include "create/types/longtext.twig.sql" %}
             {% endif %}
         {% endif %}
     {% elseif attribute_properties["type"] == "blob" %}
-      {% include "create/longblob_type.twig.sql" %}
+      {% include "create/types/longblob.twig.sql" %}
     {% endif %}
 {% endmacro %}
 

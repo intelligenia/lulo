@@ -13,6 +13,9 @@ class DB {
 
 	/** AdoDB database connection */
 	protected static $db_connection = null;
+        
+        /** Database name */
+        protected static $database_name = null;
 
 	/** Database engine */
 	const ENGINE = "mysql";
@@ -36,6 +39,7 @@ class DB {
 
 		try {
 			$error = error_reporting(E_ERROR);
+                        static::$database_name = $database;
 
 			switch (static::DRIVER) {
 				case "oci8":
@@ -68,6 +72,26 @@ class DB {
 					static::$db_connection->PConnect($server, $user, $password, $database);
 					static::$db_connection->Execute("USE " . $database);
 					break;
+                                
+                                case "mssql2008_linux":
+                                case "mssql2012_linux":
+                                case "mssql_linux":
+				case "mssqllinux":
+                                    require_once(LULO_DIR__DEPENDENCES__VENDOR."/adodb/adodb-php/drivers/adodb-pdo.inc.php");
+                                    static::$db_connection = & ADONewConnection('pdo_mssql');
+                                    $dsnString= "host={$server};dbname={$database};charset=utf8";
+                                    static::$db_connection->connect('dblib:' . $dsnString, $user, $password);
+      
+                                    static::$db_connection->execute('SET QUOTED_IDENTIFIER ON');
+                                    static::$db_connection->setConnectionParameter('characterSet','UTF-8');
+                                    static::$db_connection->execute('SET ANSI_WARNINGS ON');
+                                    static::$db_connection->execute('SET ANSI_PADDING ON');
+                                    static::$db_connecion->execute('SET ANSI_NULLS ON');
+                                    static::$db_connection->execute('SET CONCAT_NULL_YIELDS_NULL ON');
+                                    static::$db_connection->execute("USE " . $database);
+                                    print static::$db_connection->ErrorMsg();
+                                    
+                                    break;
 
 				default:
 					trigger_error("Not valid database connection ".static::DRIVER, E_USER_ERROR);
@@ -88,6 +112,14 @@ class DB {
 		}
 	}
 
+        /**
+         * Get the name of the database.
+         * @return Return the name of the database is connected otherwise return null.
+         */
+        public static function getDatabaseName(){
+            return static::$database_name;
+        }
+        
 	/**
 	 * Describe table structure.
 	 * @param string $table Database table.
@@ -185,19 +217,18 @@ class DB {
 	 * Get the last ID inserted in DB.
 	 * Unique for session.
 	 * Works in all DBMS that implements this
-	 * Read http://dev.mysql.com/doc/refman/5.5/en/information-functions.html#function_last-insert-id for MySQL explanation
+	 * Read http://phplens.com/adodb/reference.functions.insert_id.html for explanation
 	 * @return last inserted id in database.
 	 * */
 	public static function getLastInsertId() {
-		$results = static::executeSqlTemplate("get_last_inserted_id/query.twig.sql");
-		return $results->fields["id"];
+		return static::$db_connection->Insert_ID();
 	}
 
 	/**
 	* Return the last connection error of ADOdb object.
 	* @return string Message with the last connection error.
 	*/
-	public static function getLastConnectionError(){
+	public static function getLastError(){
 		return static::$db_connection->ErrorMsg();
 	}
 	

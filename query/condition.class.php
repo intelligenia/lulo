@@ -280,8 +280,17 @@ class Condition{
 		if(!is_null($this->table_alias)){
 			$table = $this->table_alias;
 		}
-		$conditionStr = "{$table}.{$field} {$sqlOperator} {$sqlValue}";
-		return $conditionStr;
+                $sqlT = \lulo\twig\TwigTemplate::factoryHtmlResource(\lulo\query\Query::PATH . "/select/field_condition.twig.sql");
+                $model = $this->model;
+                $db = $model::DB;
+                $replacements = [
+                    "table" => $table,
+                    "field"=>$field,
+                    "sql_operator"=>$sqlOperator,
+                    "value" => $sqlValue
+                ];
+		$sql = $sqlT->render($replacements);
+                return $sql;
 	}
 	
 }
